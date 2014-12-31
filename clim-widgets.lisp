@@ -7,8 +7,9 @@
   "get one part of a date"
   `(nth-value ,x (get-decoded-time)))
 
+;ev rename start-date (month year)
 (defun start (m y)
-  "return the start-datum, i.e. the first of 7x6=42 datums, e.g
+  "return start-date, i.e. the first of 7x6=42 dates, e.g
   #<SIMPLE-DATE-TIME:DATE-TIME 2014-07-27 00:00:00.000 {100654EAF3}>"
   (dt:make-date y (1- m) 
     (- (local-time:days-in-month (1- m) y)
@@ -21,13 +22,16 @@
      (present "Today" 'string :stream s) (princ " " s)
      (present #\x 'character :stream s) (terpri s)))
 
-(define-presentation-type date ())
-
 (defmacro disp-day-nr ()
   `(formatting-cell (s :align-x :right)
     (cond ((dt:date= (dt:today) (dt:day+ (start month year) i)) (with-text-face (s :bold) (present (dt:day+ (start month year) i) 'date :stream s)))
           ((/= month (dt:month-of (dt:day+ (start month year) i))) (with-drawing-options (s :ink +gray+ :text-style (make-text-style nil :italic :smaller)) (present (dt:day+ (start month year) i) 'date :stream s)))
           (t (present (dt:day+ (start month year) i) 'date :stream s)))))
+
+; present-types ---------------
+(define-presentation-type change-month () :inherit-from 'character)
+(define-presentation-type change-year () :inherit-from 'character)
+(define-presentation-type date ())
 
 (define-presentation-method present (d (type date) strm view &key)
   (declare (ignore type view))
@@ -41,18 +45,13 @@
   (:panes 
     (cal1 :application 
      :width :compute :height :compute :borders nil :scroll-bars nil :text-style '(:fix nil nil)
-     :display-function 'dispcal1)
+     :display-function 'layout1)
     (cal2 :application 
      :width :compute :height :compute :borders nil :scroll-bars nil :text-style '(:fix nil nil)
-     :display-function 'dispcal2))
+     :display-function 'layout2))
   (:layouts (c1 cal1) (c2 cal2)))
 
-(define-cal-command switch-layout ((c 'character :gesture :select))
-  (let ((frame *application-frame*))
-    (let ((new-layout (case (frame-current-layout frame) (c1 'c2) (c2 'c1))))
-      (setf (frame-current-layout frame) new-layout))))
-
-(defmethod dispcal1 ((fr cal) s &key)
+(defmethod layout1 ((fr cal) s &key)
   (let* ((month (m *application-frame*))
          (year (y *application-frame*)))
     (header)
@@ -67,7 +66,7 @@
           (dotimes (d 7) 
             (disp-day-nr) (incf i)))))))
 
-(defmethod dispcal2 ((fr cal) s &key)
+(defmethod layout2 ((fr cal) s &key)
   (let* ((month (m *application-frame*))
          (year (y *application-frame*)))
     (header)
@@ -81,14 +80,16 @@
           (dotimes (d 6)     ; warum nicht 5 ?
             (disp-day-nr) (incf i 7))))))))
 
+(define-cal-command switch-layout ((c 'character :gesture :select))
+  (let ((frame *application-frame*))
+    (let ((new-layout (case (frame-current-layout frame) (c1 'c2) (c2 'c1))))
+      (setf (frame-current-layout frame) new-layout))))
+
 (define-cal-command get-date ((date 'date :gesture :select))
   (setf (d *application-frame*) (dt:day-of date)
         (m *application-frame*) (dt:month-of date)
         (y *application-frame*) (dt:year-of date))
   (frame-exit *application-frame*))
-
-(define-presentation-type change-month () :inherit-from 'character)
-(define-presentation-type change-year () :inherit-from 'character)
 
 (define-cal-command change-y ((c 'change-year :gesture :select))
   (if (char= c #\<)
