@@ -3,24 +3,19 @@
 (in-package #:clim-widgets)
 
 ; helper ----------------
-(defmacro dp (x)
-  "get one part of a date"
-  `(nth-value ,x (get-decoded-time)))
-
-;ev rename start-date (month year)
-(defun start (m y)
-  "return start-date, i.e. the first of 7x6=42 dates, e.g
-  #<SIMPLE-DATE-TIME:DATE-TIME 2014-07-27 00:00:00.000 {100654EAF3}>"
-  (dt:make-date y (1- m) 
-    (- (local-time:days-in-month (1- m) y)
-       (nth-value 6 (decode-universal-time (encode-universal-time 0 0 0 1 m y))))))
-
 (defmacro header ()
   `(progn 
      (present #\< 'change-month :stream s) (format s "~a" (svref local-time:+short-month-names+ month)) (present #\> 'change-month :stream s) (princ " " s) 
      (present #\< 'change-year :stream s) (princ year s) (present #\> 'change-year :stream s) (princ " " s)
      (present "Today" 'string :stream s) (princ " " s)
      (present #\x 'character :stream s) (terpri s)))
+
+(defun start (m y) ;ev rename start-date (month year)
+  "returns the start-date, i.e. the first of 7x6=42 dates, as an instance
+  e.g #<SIMPLE-DATE-TIME:DATE-TIME 2014-07-27 00:00:00.000 {100654EAF3}>"
+  (dt:make-date y (1- m) 
+    (- (local-time:days-in-month (1- m) y)
+       (nth-value 6 (decode-universal-time (encode-universal-time 0 0 0 1 m y))))))
 
 (defmacro disp-day-nr ()
   `(formatting-cell (s :align-x :right)
@@ -52,8 +47,7 @@
   (:layouts (c1 cal1) (c2 cal2)))
 
 (defmethod layout1 ((fr cal) s &key)
-  (let* ((month (m *application-frame*))
-         (year (y *application-frame*)))
+  (with-slots (month year) *application-frame*
     (header)
     (formatting-table (s)
       (formatting-row (s)
@@ -67,8 +61,7 @@
             (disp-day-nr) (incf i)))))))
 
 (defmethod layout2 ((fr cal) s &key)
-  (let* ((month (m *application-frame*))
-         (year (y *application-frame*)))
+  (with-slots (month year) *application-frame*
     (header)
     (let (i)
     (formatting-table (s)
@@ -85,18 +78,11 @@
     (let ((new-layout (case (frame-current-layout frame) (c1 'c2) (c2 'c1))))
       (setf (frame-current-layout frame) new-layout))))
 
-(define-cal-command get-date ((date 'date :gesture :select))
-  (setf (d *application-frame*) (dt:day-of date)
-        (m *application-frame*) (dt:month-of date)
-        (y *application-frame*) (dt:year-of date))
-  (frame-exit *application-frame*))
-
 (define-cal-command change-y ((c 'change-year :gesture :select))
   (if (char= c #\<)
     (progn (decf (y *application-frame*)) (redisplay-frame-panes *application-frame*))
     (progn (incf (y *application-frame*)) (redisplay-frame-panes *application-frame*))))
 
-; ev alexandria:rotate
 (define-cal-command change-m ((c 'change-month :gesture :select))
   (if (char= c #\<)
     (typecase (m *application-frame*) ((integer 2 12) (decf (m *application-frame*)) (redisplay-frame-panes *application-frame*))
@@ -104,13 +90,18 @@
     (typecase (m *application-frame*) ((integer 1 11) (incf (m *application-frame*)) (redisplay-frame-panes *application-frame*))
       (t (setf (m *application-frame*) 1) (incf (y *application-frame*)) (redisplay-frame-panes *application-frame*)))))
 
-(define-cal-command todays-date ((c 'string :gesture :select))
-  (setf (d *application-frame*) (dp 3)
-        (m *application-frame*) (dp 4)
-        (y *application-frame*) (dp 5))
+(define-cal-command get-date ((date 'date :gesture :select))
+  (with-accessors ((da d) (ma m) (ya y)) *application-frame*
+    (setf da (dt:day-of date) ma (dt:month-of date) ya (dt:year-of date)))
   (frame-exit *application-frame*))
 
-(defun calendar (&optional (month (dp 4)) (year (dp 5)))
+(define-cal-command todays-date ((c 'string :gesture :select))
+  (with-accessors ((da d) (ma m) (ya y)) *application-frame*
+    (let ((now (dt:now))) 
+      (setf da (dt:day-of now) ma (dt:month-of now) ya (dt:year-of now))))
+    (frame-exit *application-frame*))
+
+(defun calendar (&optional (month (dt:month-of (dt:now))) (year (dt:year-of (dt:now))))
   (let ((frame (make-application-frame 'cal :m month :y year)))
     (run-frame-top-level frame)
     (if (slot-boundp frame 'day) (format nil "~a-~a-~a" (y frame) (m frame) (d frame)))))
