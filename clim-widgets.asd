@@ -5,8 +5,13 @@
   :description "small collection of clim widgets"
   :author "<schatzer.johann@gmail>"
   :license "BSD Simplified"
-  :depends-on (mcclim simple-date-time local-time)
+  :depends-on (mcclim simple-date-time local-time
+                      cl-fad)
   :serial t
   :components ((:file "package")
-               (:file "clim-widgets")))
+               (:file "clim-widgets") ; rename calendar
+               (:file "calendar")
+               (:file "tree-view")
+               (:file "cw-test")
+               ))
 
