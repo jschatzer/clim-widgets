@@ -4,37 +4,30 @@
 ; and
 ; http://www.cs.cmu.edu/afs/cs/project/ai-repository/ai/lang/lisp/gui/clim/clim_2/browsers/
 ; =========================================================================================
-
 ;;; Indented lists are a way of displaying hierarchical (tree) structure.
 ;;; Each non-terminal tree node is prefixed by an icon that shows whether
 ;;; the item is "open" or "closed".  If open, the inferiors of the node
 ;;; are displayed directly below it, with indentation accumulating
 ;;; in relation to tree depth.  For terminal nodes, there is no icon.
 ;;;
-;;; Try:
-;;;  (view-directory "~") ; unix
-;;;  (view-directory "disneyland:>mickey-mouse>*.*.*") ; lispm
-;;;
 ;;; Written by Jeff Morrill (jmorrill@bbn.com), December 92.
 ;;; It is provided "as is" without express or implied warranty.
 ;;; Thanks to Scott McKay for solving an incremental redisplay problem.
 ;;;
-;;; ************************************************************
-
 ;;; The basic protocol.  Non-terminal nodes are called "groups."
 ;;; Everything that is not a group is considered to be a terminal node.
 ; =========================================================================================
 
 (in-package :clim-widgets)
-; f frame p pane s stream
+; f frame p pane s stream pt presentation-type gp group
 
 (defclass essential-group ()
-  ((display-contents :initform nil :initarg :display-contents :accessor display-contents))) ;initform nil is necessary!!!
+  ((display-contents :initform nil :initarg :display-contents :accessor display-contents)))
 
 (defmethod group-name ((group t)) group)
 (defmethod group-contents ((group t)) nil)
-(defmethod indented-list-presentation-type ((group t) default) default)
-(defmethod indentation ((group t)) 2) ; 3 orig
+(defmethod item-ptype ((group t) default) default)
+(defmethod indentation ((group t)) 2)
 (defmethod toggle ((group t)) (setf (display-contents group) (not (display-contents group))))
 
 (defmethod display-indented-list ((group t) presentation-type s indent)
@@ -53,7 +46,7 @@
       (call-next-method)
       (when (display-contents group)
         (let ((i (indentation group))
-              (type (indented-list-presentation-type group presentation-type)))
+              (type (item-ptype group presentation-type)))
           (dolist (child (group-contents group))
             (display-indented-list child type s (+ indent i))))))))
 
@@ -78,17 +71,17 @@
 ;;; ************************************************************
 ;;; A presentation type and an action for open/close operations.
 
-(define-command-table indented-lists)
+(define-command-table tree)
 
-(define-presentation-type icon (&optional ptype))
+(define-presentation-type icon (&optional pt))
 
 (define-presentation-method accept ((type icon) s (view textual-view) &key)
-  (accept ptype :stream s :prompt nil))
+  (accept pt :stream s :prompt nil))
 
 (define-presentation-method present (object (type icon) s (view textual-view) &key)
   (display-indented-list object ptype s (indentation object)))
 
-(define-presentation-action toggle (icon command indented-lists :gesture :select) (object window)
+(define-presentation-action toggle (icon command tree :gesture :select) (object window)
   (toggle object) (redisplay-frame-pane *application-frame* window))
 
 ;;;************************************************************
@@ -97,7 +90,7 @@
 (define-application-frame group-viewer ()
   ((group :accessor group)
    (ptype :accessor ptype))
-  (:command-table (group-viewer :inherit-from (indented-lists)))
+  (:command-table (group-viewer :inherit-from (tree)))
   (:panes (tree :application :display-function 'disp-tree))
   (:layouts (single tree)))
 
@@ -107,7 +100,7 @@
       (updating-output (p :unique-id :top-level) 
         (display-indented-list (group f) (ptype f) p (indentation (group f)))))))
 
-(defun view-group (group ptype)
+(defun view-group (gp pt)
   (let ((f (make-application-frame 'group-viewer :left 0 :top 0 :right 400 :bottom 400)))
-    (setf (group f) group (ptype f) ptype)
+    (setf (group f) gp (ptype f) pt)
     (run-frame-top-level f)))

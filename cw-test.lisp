@@ -70,7 +70,6 @@
   (t2h tree)  ; 1) create hash-table
   (view-group (make-instance 'tree-view :sup key :display-contents t) 'string))  ; 2) create initial display
 
-
 ;--------------------------------------------------------
 ;;; A small classification example, with instructions
 ;--------------------------------------------------------
@@ -103,54 +102,44 @@
      ("d.01.001009.003.0|003.0 Gastroenterite da Salmonella|
             Salmonellosi")))))))
 
-(defclass icd-view (tree-view)
-  ((infox :accessor infox)))
-
-;(defmethod group-name ((self icd-view)) (#~s'.*\|(.+)\|.*'\1's (sup self)))   ; geht nicht, not needed
-
-(defmethod group-contents :around ((self icd-view))
-  (unless (slot-boundp self 'inf)
-      (setf (group-contents self) 
-            (mapcar (lambda (x) 
-                      (if (gethash x *nodes*) 
-                        (make-instance 'icd-view :sup x :infox (#~s'.*\|.+\|(.*)'\1's x)) 
-                        (#~s'.*\|(.+)\|.*'\1's x)))
-                    (gethash (sup self) *nodes*))))
-  (call-next-method))
-
-(define-application-frame group-viewer2 (group-viewer icd-view)
+(define-application-frame tree-info (group-viewer)
  ((info :accessor info :initform ""))
-  (:command-table (group-viewer2 :inherit-from (indented-lists group-viewer)))
+  (:command-table (tree-info :inherit-from (tree group-viewer)))
   (:panes 
    (tree :application :display-function 'disp-tree)  ; brauchts anscheinend
    (info :application :display-function 'disp-info))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
-;----------------------------------------------
-(define-presentation-type icd () :inherit-from 'string)
-
-(define-presentation-method present (item (type icd) s view &key) (declare (ignore type view))
-  (format s "~a" (#~s'.*\|(.+)\|.*'\1's item)))
-
-(define-group-viewer2-command xx ((c 'icd :gesture :select))   
-  (setf (info *application-frame*) (#~s'.*\|.+\|(.*)'\1's c)))
-;----------------------------------------------
-
-(defun wdo (s stg ink)
-  (with-drawing-options (s :ink ink :text-face :bold) (format s "~a" stg)))
-
+(defun wdo (s stg ink) (with-drawing-options (s :ink ink :text-face :bold) (format s "~a" stg))) ;helper
 (defun disp-info (f p)
   (mapc (lambda (x)
           (cond 
             ((string= x "Incl.:") (wdo p x +green+))
             ((string= x "Escl.:") (wdo p x +red+))
-            ;((string= x "Nota:") (wdo p x +foreground-ink+))
             ((#~m'Not[ae]:' x) (wdo p x +foreground-ink+))
             (t (format p "~a" x))))
         (ppcre:split "(Not[ae]:|Escl.:|Incl.:)" (info *application-frame*) :with-registers-p t)))
 
+(defmethod group-contents :around ((self tree-info))
+  (unless (slot-boundp self 'inf)
+      (setf (group-contents self) 
+            (mapcar (lambda (x) 
+                      (if (gethash x *nodes*) 
+                        (make-instance 'tree-info :sup x :info (#~s'.*\|.+\|(.*)'\1's x)) 
+                        (#~s'.*\|(.+)\|.*'\1's x)))
+                    (gethash (sup self) *nodes*))))
+  (call-next-method))
+
+(define-presentation-type icd () :inherit-from 'string)
+
+(define-presentation-method present (item (type icd) s view &key) (declare (ignore type view))
+  (format s "~a" (#~s'.*\|(.+)\|.*'\1's item)))
+
+(define-tree-info-command xx ((item 'icd :gesture :select))   
+  (setf (info *application-frame*) (#~s'.*\|.+\|(.*)'\1's item)))
+
 (defun view-group2 (group ptype)
-  (let ((f (make-application-frame 'group-viewer2 :left 0 :top 0 :right 400 :bottom 400)))
+  (let ((f (make-application-frame 'tree-info :left 0 :top 0 :right 800 :bottom 400)))
     (setf (group f) group (ptype f) ptype)
     (run-frame-top-level f)))
 
