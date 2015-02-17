@@ -31,3 +31,9 @@ Trivial example to view a tree of nested lists
 Small classification example, with instructions
 
 (cw::icdview cw::icds "d|diagnosi|")
+
+
+----------------------------------------
+17.2.2015, a class "browser"
+
+(cw::class-view cw::classes t)

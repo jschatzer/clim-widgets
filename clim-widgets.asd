@@ -6,7 +6,7 @@
   :author "<schatzer.johann@gmail>"
   :license "BSD Simplified"
   :depends-on (mcclim simple-date-time local-time
-                      cl-fad perlre)
+                      cl-fad perlre closer-mop)
   :serial t
   :components ((:file "package")
                (:file "clim-widgets") ; rename calendar

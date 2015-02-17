@@ -146,3 +146,22 @@
 (defun icdview (tree key)
   (t2h tree)
   (view-group2 (make-instance 'tree-view :sup key :display-contents t) 'icd))
+
+;--------------------------------------------------------
+;;; A class "browser"
+;--------------------------------------------------------
+(defun class-p (sym) (if (ignore-errors (find-class sym)) sym))
+(defparameter classes (remove nil (mapcar #'class-p (loop for s being the external-symbols of :common-lisp collect s))))
+
+(defun l2h (lst)
+  "list to hash-table"
+  (mapc (lambda (x)
+          (cond 
+           ((closer-mop:class-direct-subclasses (find-class x)) 
+            (defnode x (mapcar #'class-name (closer-mop:class-direct-subclasses (find-class x)))))
+           (t (defnode x nil))))
+        lst))
+
+(defun class-view (tree key)
+  (l2h tree)
+  (view-group (make-instance 'tree-view :sup key :display-contents t) 'symbol))
