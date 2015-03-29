@@ -37,3 +37,19 @@ Small classification example, with instructions
 17.2.2015, a class "browser"
 
 (cw::class-view cw::classes t)
+
+
+----------------------------------------
+26.3.2015, class browser #2
+
+(cw::condition-view cw::classes t) or (cw::condition-view cw::classes 'condition) 
+
+;==============
+Now there is also a spartane plus-icon and a line or grid system, the last one not yet correctly working
+
+The icons can be changed by
+(setf cw::icon 'cw::plus) or (setf cw::icon 'cw::triangle)
+
+The grid can be shown or suppressed by 
+(setf cw::*bar* nil) (setf cw::*bar* t) 
+;==============

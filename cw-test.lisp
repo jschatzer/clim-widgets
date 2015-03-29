@@ -9,17 +9,17 @@
 (defun directory-name (p) (let ((lst (pathname-directory p))) (when (consp lst) (car (last lst)))))
 (defun file-name (p) (file-namestring p))
 
-(defclass directory-display (essential-group)
+(defclass directory-display (node)
   ((pathname :initarg :pathname :accessor pn)
-   (contents :accessor group-contents)))
+   (contents :accessor node-contents)))
 
-(defmethod group-name ((self directory-display)) (directory-name (pn self)))
-;(defmethod print-object ((self directory-display) stream) (format stream "#<~A>" (group-name self))) ;not needed?
+(defmethod node-name ((self directory-display)) (directory-name (pn self)))
+;(defmethod print-object ((self directory-display) stream) (format stream "#<~A>" (node-name self))) ;not needed?
 
-(defmethod group-contents :around ((self directory-display))
+(defmethod node-contents :around ((self directory-display))
   (unless (slot-boundp self 'contents)
     (let ((stuff (list-directory (pn self))))
-      (setf (group-contents self)
+      (setf (node-contents self)
             (append (mapcar
                       (lambda (p)
                         (make-instance 'directory-display :pathname (directory-pathname p)))
@@ -52,17 +52,17 @@
                 (t (t2h x))))
         tree))
 
-(defclass tree-view (essential-group)
+(defclass tree-view (node)
   ((sup :accessor sup :initarg :sup)
-   (inf :accessor group-contents)))
+   (inf :accessor node-contents)))
 
-(defmethod group-name ((self tree-view)) (sup self))
-;(defmethod print-object ((self tree-view) stream) (format stream "#<~A>" (group-name self))) ;??
+(defmethod node-name ((self tree-view)) (sup self))
+;(defmethod print-object ((self tree-view) stream) (format stream "#<~A>" (node-name self))) ;??
 
-(defmethod group-contents :around ((self tree-view))
+(defmethod node-contents :around ((self tree-view))
   (unless (slot-boundp self 'inf)
     (let ((stuff (gethash (sup self) *nodes*)))
-      (setf (group-contents self) 
+      (setf (node-contents self) 
             (mapcar (lambda (x) (if (gethash x *nodes*) (make-instance 'tree-view :sup x) x)) stuff))))
   (call-next-method))
 
@@ -106,11 +106,12 @@
  ((info :accessor info :initform ""))
   (:command-table (tree-info :inherit-from (tree group-viewer)))
   (:panes 
-   (tree :application :display-function 'disp-tree)  ; brauchts anscheinend
+   (tree :application :display-function 'display)  ; brauchts anscheinend
    (info :application :display-function 'disp-info))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
 (defun wdo (s stg ink) (with-drawing-options (s :ink ink :text-face :bold) (format s "~a" stg))) ;helper
+
 (defun disp-info (f p)
   (mapc (lambda (x)
           (cond 
@@ -120,9 +121,9 @@
             (t (format p "~a" x))))
         (ppcre:split "(Not[ae]:|Escl.:|Incl.:)" (info *application-frame*) :with-registers-p t)))
 
-(defmethod group-contents :around ((self tree-info))
+(defmethod node-contents :around ((self tree-info))
   (unless (slot-boundp self 'inf)
-      (setf (group-contents self) 
+      (setf (node-contents self) 
             (mapcar (lambda (x) 
                       (if (gethash x *nodes*) 
                         (make-instance 'tree-info :sup x :info (#~s'.*\|.+\|(.*)'\1's x)) 
@@ -156,12 +157,40 @@
 (defun l2h (lst)
   "list to hash-table"
   (mapc (lambda (x)
-          (cond 
-           ((closer-mop:class-direct-subclasses (find-class x)) 
-            (defnode x (mapcar #'class-name (closer-mop:class-direct-subclasses (find-class x)))))
-           (t (defnode x nil))))
+          (cond ((closer-mop:class-direct-subclasses (find-class x)) (defnode x (mapcar #'class-name (closer-mop:class-direct-subclasses (find-class x)))))
+                (t (defnode x nil))))
         lst))
 
 (defun class-view (tree key)
   (l2h tree)
   (view-group (make-instance 'tree-view :sup key :display-contents t) 'symbol))
+
+;--------------------------------------------------------
+;;; class browser with description
+;--------------------------------------------------------
+(define-presentation-type item () :inherit-from 'string)
+(define-presentation-method present (item (type item) s view &key) (declare (ignore type view))
+  (format s "~a" item))
+
+(define-application-frame cond-info (group-viewer)
+ ((info :accessor info :initform ""))
+  (:command-table (cond-info :inherit-from (tree group-viewer)))
+  (:panes 
+   (tree :application :display-function 'display :incremental-redisplay t)
+   (info :application :display-function 'disp-info-cond :incremental-redisplay t))
+	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
+
+(defun disp-info-cond (f p)
+  (format p "~a" (describe (ignore-errors (find-class (info *application-frame*))))))
+
+(define-cond-info-command xx ((item 'item :gesture :select))   
+  (setf (info *application-frame*) item))
+
+(defun view-group3 (group ptype)
+  (let ((f (make-application-frame 'cond-info :left 0 :top 0 :right 800 :bottom 400)))
+    (setf (group f) group (ptype f) ptype)
+    (run-frame-top-level f)))
+
+(defun condition-view (tree key)
+  (l2h tree)
+  (view-group3 (make-instance 'tree-view :sup key :display-contents t) 'item))
