@@ -48,8 +48,8 @@ Small classification example, with instructions
 Now there is also a spartane plus-icon and a line or grid system, the last one not yet correctly working
 
 The icons can be changed by
-(setf cw::icon 'cw::plus) or (setf cw::icon 'cw::triangle)
+(setf cw::*icon* 'cw::plus) or (setf cw::*icon* 'cw::triangle)
 
 The grid can be shown or suppressed by 
-(setf cw::*bar* nil) (setf cw::*bar* t) 
+(setf cw::*grid* nil) (setf cw::*grid* t) 
 ;==============

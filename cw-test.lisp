@@ -104,9 +104,10 @@
 
 (define-application-frame tree-info (group-viewer)
  ((info :accessor info :initform ""))
-  (:command-table (tree-info :inherit-from (tree group-viewer)))
+;  (:command-table (tree-info :inherit-from (tree group-viewer)))
+  (:command-table (tree-info :inherit-from (group-viewer)))
   (:panes 
-   (tree :application :display-function 'display)  ; brauchts anscheinend
+   (tree :application :display-function 'display)
    (info :application :display-function 'disp-info))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
@@ -121,6 +122,8 @@
             (t (format p "~a" x))))
         (ppcre:split "(Not[ae]:|Escl.:|Incl.:)" (info *application-frame*) :with-registers-p t)))
 
+(define-presentation-type icd () :inherit-from 'string)
+
 (defmethod node-contents :around ((self tree-info))
   (unless (slot-boundp self 'inf)
       (setf (node-contents self) 
@@ -130,8 +133,6 @@
                         (#~s'.*\|(.+)\|.*'\1's x)))
                     (gethash (sup self) *nodes*))))
   (call-next-method))
-
-(define-presentation-type icd () :inherit-from 'string)
 
 (define-presentation-method present (item (type icd) s view &key) (declare (ignore type view))
   (format s "~a" (#~s'.*\|(.+)\|.*'\1's item)))
@@ -174,7 +175,8 @@
 
 (define-application-frame cond-info (group-viewer)
  ((info :accessor info :initform ""))
-  (:command-table (cond-info :inherit-from (tree group-viewer)))
+;  (:command-table (cond-info :inherit-from (tree group-viewer)))
+  (:command-table (cond-info :inherit-from (group-viewer)))
   (:panes 
    (tree :application :display-function 'display :incremental-redisplay t)
    (info :application :display-function 'disp-info-cond :incremental-redisplay t))
@@ -183,7 +185,8 @@
 (defun disp-info-cond (f p)
   (format p "~a" (describe (ignore-errors (find-class (info *application-frame*))))))
 
-(define-cond-info-command xx ((item 'item :gesture :select))   
+;mail xach 30.3.15 Duplicate definition for XX found in  one file.
+(define-cond-info-command xxx ((item 'item :gesture :select))   
   (setf (info *application-frame*) item))
 
 (defun view-group3 (group ptype)
