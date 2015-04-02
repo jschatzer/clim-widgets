@@ -36,13 +36,14 @@ Small classification example, with instructions
 ----------------------------------------
 17.2.2015, a class "browser"
 
-(cw::class-view cw::classes t)
+(cw::view-classes cw::classes t)
 
 
 ----------------------------------------
 26.3.2015, class browser #2
 
-(cw::condition-view cw::classes t) or (cw::condition-view cw::classes 'condition) 
+(cw::view-classes-with-description cw::classes t) or
+(cw::view-classes-with-description cw::classes 'condition)
 
 ;==============
 Now there is also a spartane plus-icon and a line or grid system, the last one not yet correctly working

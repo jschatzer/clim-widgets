@@ -1,4 +1,5 @@
-(in-package :clim-widgets)
+(in-package clim-widgets)
+; p path, n node,
 
 ;--------------------------------------------------------
 ;;; An application for viewing file directories, from http://osdir.com/ml/mcclim-devel/2009-08/msg00010.html
@@ -9,66 +10,40 @@
 (defun directory-name (p) (let ((lst (pathname-directory p))) (when (consp lst) (car (last lst)))))
 (defun file-name (p) (file-namestring p))
 
-(defclass directory-display (node)
-  ((pathname :initarg :pathname :accessor pn)
-   (contents :accessor node-contents)))
+(defmethod node-name ((n node)) (directory-name (sup n)))
 
-(defmethod node-name ((self directory-display)) (directory-name (pn self)))
-;(defmethod print-object ((self directory-display) stream) (format stream "#<~A>" (node-name self))) ;not needed?
-
-(defmethod node-contents :around ((self directory-display))
-  (unless (slot-boundp self 'contents)
-    (let ((stuff (list-directory (pn self))))
-      (setf (node-contents self)
+(defmethod inf :around ((n node))
+  (unless (slot-boundp n 'inf)
+    (let ((stuff (list-directory (sup n))))
+      (setf (inf n)
             (append (mapcar
                       (lambda (p)
-                        (make-instance 'directory-display :pathname (directory-pathname p)))
+                        (make-instance 'node :sup (directory-pathname p)))
                       (sort (remove-if-not #'directory-p stuff) #'string-lessp :key #'directory-name))
                     (sort (mapcar #'file-name (remove-if #'directory-p stuff)) #'string-lessp)))))
   (call-next-method))
 
 (defun view-directory (directory)
-  ;(view-group (make-instance 'directory-display :pathname (directory-pathname directory) :display-contents t) 'string))
-  (view-group (make-instance 'directory-display :pathname (directory-pathname directory)) 'string))
+  (tree-view (make-instance 'node :sup (directory-pathname directory)) 'string))
 
 ;--------------------------------------------------------
 ;;; A trivial example to view a tree of nested lists
 ;--------------------------------------------------------
 (defparameter lst '(("icd" ("dgn" ("d1" ("dleaf1") ("dleaf2")) ("d2")) ("int" ("i1") ("i2")))))
 
-;1) create a hash table:
-;   key:=stg sup-name
-;   val:=lst of inf-names 
-(defparameter *nodes* (make-hash-table :test #'equal))
+(defclass node1 (node) ())  ; brauchts wegen obigen list-directory
+(defmethod node-name ((n node1)) (sup n))
 
-(defun defnode (sup inf)
-  (setf (gethash sup *nodes*) inf))
-
-(defun t2h (tree)
-  "tree to hash-table"
-  (mapc (lambda (x)
-          (cond ((and (atom (car x)) (null (cdr x))) (defnode (car x) nil))
-                ((and (atom (car x)) (cdr x)) (defnode (car x) (mapcar #'car (cdr x))) (t2h (cdr x)))
-                (t (t2h x))))
-        tree))
-
-(defclass tree-view (node)
-  ((sup :accessor sup :initarg :sup)
-   (inf :accessor node-contents)))
-
-(defmethod node-name ((self tree-view)) (sup self))
-;(defmethod print-object ((self tree-view) stream) (format stream "#<~A>" (node-name self))) ;??
-
-(defmethod node-contents :around ((self tree-view))
-  (unless (slot-boundp self 'inf)
-    (let ((stuff (gethash (sup self) *nodes*)))
-      (setf (node-contents self) 
-            (mapcar (lambda (x) (if (gethash x *nodes*) (make-instance 'tree-view :sup x) x)) stuff))))
+(defmethod inf :around ((n node1))
+  (unless (slot-boundp n 'inf)
+    (let ((stuff (gethash (sup n) *nodes*)))
+      (setf (inf n) 
+            (mapcar (lambda (x) (if (gethash x *nodes*) (make-instance 'node1 :sup x) x)) stuff))))
   (call-next-method))
 
 (defun treeview (tree key) ;initial key
   (t2h tree)  ; 1) create hash-table
-  (view-group (make-instance 'tree-view :sup key :display-contents t) 'string))  ; 2) create initial display
+  (tree-view (make-instance 'node1 :sup key :disp-inf t) 'string))  ; 2) create initial display
 
 ;--------------------------------------------------------
 ;;; A small classification example, with instructions
@@ -102,36 +77,26 @@
      ("d.01.001009.003.0|003.0 Gastroenterite da Salmonella|
             Salmonellosi")))))))
 
-(define-application-frame tree-info (group-viewer)
- ((info :accessor info :initform ""))
-;  (:command-table (tree-info :inherit-from (tree group-viewer)))
-  (:command-table (tree-info :inherit-from (group-viewer)))
-  (:panes 
-   (tree :application :display-function 'display)
-   (info :application :display-function 'disp-info))
-	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
-
-(defun wdo (s stg ink) (with-drawing-options (s :ink ink :text-face :bold) (format s "~a" stg))) ;helper
-
-(defun disp-info (f p)
+(defmethod disp-info ((f tree-info) p)
   (mapc (lambda (x)
-          (cond 
-            ((string= x "Incl.:") (wdo p x +green+))
-            ((string= x "Escl.:") (wdo p x +red+))
-            ((#~m'Not[ae]:' x) (wdo p x +foreground-ink+))
-            (t (format p "~a" x))))
+          (flet ((wdo (s stg ink) (with-drawing-options (s :ink ink :text-face :bold) (format s "~a" stg))))
+            (cond 
+              ((string= x "Incl.:") (wdo p x +green+))
+              ((string= x "Escl.:") (wdo p x +red+))
+              ((#~m'Not[ae]:' x) (wdo p x +foreground-ink+))
+              (t (format p "~a" x)))))
         (ppcre:split "(Not[ae]:|Escl.:|Incl.:)" (info *application-frame*) :with-registers-p t)))
 
 (define-presentation-type icd () :inherit-from 'string)
 
-(defmethod node-contents :around ((self tree-info))
-  (unless (slot-boundp self 'inf)
-      (setf (node-contents self) 
+(defmethod inf :around ((n tree-info))
+  (unless (slot-boundp n 'inf)
+      (setf (inf n) 
             (mapcar (lambda (x) 
                       (if (gethash x *nodes*) 
                         (make-instance 'tree-info :sup x :info (#~s'.*\|.+\|(.*)'\1's x)) 
                         (#~s'.*\|(.+)\|.*'\1's x)))
-                    (gethash (sup self) *nodes*))))
+                    (gethash (sup n) *nodes*))))
   (call-next-method))
 
 (define-presentation-method present (item (type icd) s view &key) (declare (ignore type view))
@@ -140,14 +105,9 @@
 (define-tree-info-command xx ((item 'icd :gesture :select))   
   (setf (info *application-frame*) (#~s'.*\|.+\|(.*)'\1's item)))
 
-(defun view-group2 (group ptype)
-  (let ((f (make-application-frame 'tree-info :left 0 :top 0 :right 800 :bottom 400)))
-    (setf (group f) group (ptype f) ptype)
-    (run-frame-top-level f)))
-
 (defun icdview (tree key)
   (t2h tree)
-  (view-group2 (make-instance 'tree-view :sup key :display-contents t) 'icd))
+  (tree-info-view (make-instance 'node1 :sup key :disp-inf t) 'icd))
 
 ;--------------------------------------------------------
 ;;; A class "browser"
@@ -162,9 +122,9 @@
                 (t (defnode x nil))))
         lst))
 
-(defun class-view (tree key)
+(defun view-classes (tree key)
   (l2h tree)
-  (view-group (make-instance 'tree-view :sup key :display-contents t) 'symbol))
+  (tree-view (make-instance 'node1 :sup key :disp-inf t) 'symbol))
 
 ;--------------------------------------------------------
 ;;; class browser with description
@@ -173,27 +133,26 @@
 (define-presentation-method present (item (type item) s view &key) (declare (ignore type view))
   (format s "~a" item))
 
-(define-application-frame cond-info (group-viewer)
+; copy paste with renaming% because of inheritance- or specialisation problems with disp-info
+(define-application-frame tree-info% (tree)
  ((info :accessor info :initform ""))
-;  (:command-table (cond-info :inherit-from (tree group-viewer)))
-  (:command-table (cond-info :inherit-from (group-viewer)))
+  (:command-table (tree-info% :inherit-from (tree)))
   (:panes 
    (tree :application :display-function 'display :incremental-redisplay t)
-   (info :application :display-function 'disp-info-cond :incremental-redisplay t))
+   (info :application :display-function 'disp-info :incremental-redisplay t))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
-(defun disp-info-cond (f p)
+(defmethod disp-info ((f tree-info%) p)
   (format p "~a" (describe (ignore-errors (find-class (info *application-frame*))))))
 
-;mail xach 30.3.15 Duplicate definition for XX found in  one file.
-(define-cond-info-command xxx ((item 'item :gesture :select))   
+(define-tree-info%-command xxx ((item 'item :gesture :select))   
   (setf (info *application-frame*) item))
 
-(defun view-group3 (group ptype)
-  (let ((f (make-application-frame 'cond-info :left 0 :top 0 :right 800 :bottom 400)))
+(defun tree-info-view% (group ptype)
+  (let ((f (make-application-frame 'tree-info% :left 0 :top 0 :right 800 :bottom 400)))
     (setf (group f) group (ptype f) ptype)
     (run-frame-top-level f)))
 
-(defun condition-view (tree key)
+(defun view-classes-with-description (tree key)
   (l2h tree)
-  (view-group3 (make-instance 'tree-view :sup key :display-contents t) 'item))
+  (tree-info-view% (make-instance 'node1 :sup key :disp-inf t) 'item))
