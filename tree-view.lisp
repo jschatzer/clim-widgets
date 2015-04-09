@@ -14,6 +14,60 @@
 ;updating-output with/without :unique-id -- for performance?
 ;(defmethod print-object ((self directory-display) stream) (format stream "#<~A>" (node-name self))) ;überlegen 
 
+;;; ************************************************************
+;;; icons and grid
+
+(define-presentation-type icon ())
+(define-presentation-method highlight-presentation ((type icon) r s st) :unhighlight)
+(define-presentation-method present (o (type icon) s v &key) (disp-tree o ptype s (indentation o)))  ; anschauen
+
+(defvar *icon* 'plus) ; 'triangle 'triangle2
+(defvar *grid* t)     ; nil
+
+;general rectangle
+(defun rect (s) (draw-rectangle* s 0 0 10 10 :filled nil) (draw-lines* s '(5 0 5 -5   10 5 15 5)))
+;plus
+(defun m% (s) (draw-line* s 2.5 5 7.5 5))    ; m is used in calendar <-----
+(defun p (s) (m% s) (with-rotation (s (/ pi -2) (make-point 5 5)) (m% s)))
+(defun plus (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (m% s) (p s)))))
+;triangles
+(defun tri-m (s) (draw-polygon* s '(0 0 10 0 5 10)))
+(defun tri-p (s) (draw-polygon* s '(0 0 10 5 0 10)))
+(defun triangle  (s x y o) (with-translation (s x y) (with-scaling (s 1)          (if o (tri-m s) (tri-p s)))))
+(defun triangle2 (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (tri-m s) (tri-p s)))))
+
+(defun draw-icon (s group)
+  "Draw the opened/closed icon"
+;  (updating-output (s :cache-value (disp-inf group))
+    (with-output-as-presentation (s group 'icon)
+      (let ((open-p (disp-inf group)))
+        (multiple-value-bind (x y) (stream-cursor-position s)
+          (funcall *icon* s x y open-p)
+          (stream-set-cursor-position s (+ 20 x) y)))))
+;  )
+
+(defun spc (s) (stream-increment-cursor-position s 20 nil))
+(defun bar (s) 
+  (multiple-value-bind (x y) (stream-cursor-position s)
+    (draw-line* s (+ x 5) (- y 5) (+ x 5) (+ y 15))      ; use line- text hight   <---
+    (stream-set-cursor-position s (+ 20 x) y)))
+(defun lin (s) 
+  (flet ((lin% (s) (draw-lines* s '(0 0 10 0   0 0 0 -10))))
+    (multiple-value-bind (x y) (stream-cursor-position s) 
+      (with-translation (s (+ x 5) (+ y 8)) (with-scaling (s 1 1.5) (lin% s))) (stream-set-cursor-position s (+ 20 x) y))))
+
+;suppress the line in last child, recursively? <---
+(defun grid (s i n)
+  (flet ((spc (s) (spc s)) (bar (s) (bar s)) (lin (s) (lin s)))
+    (cond ((= i 1))
+          ((= i 2) (spc s))
+          (t (if *grid*
+               (progn (spc s) (dotimes (x (- i 2)) (bar s)) (typecase n (node) (t (lin s))))
+               (dotimes (x (- i 1)) (spc s)))))))
+
+;;; ************************************************************
+;;; tree display helper methods
+
 (defclass node () 
   ((sup :accessor sup :initarg :sup :documentation "superior, name")
    (inf :accessor inf :documentation "inferiors, list")
@@ -25,49 +79,6 @@
 (defmethod item-ptype (n default) default)
 (defmethod indentation (n) 1)
 
-;;; ************************************************************
-;;; icons and grid
-
-(define-presentation-type icon (&optional pt))
-
-(define-presentation-method accept ((type icon) s (view textual-view) &key)
-  (accept pt :stream s :prompt nil))
-
-(define-presentation-method present (object (type icon) s (view textual-view) &key)
-  (disp-tree object ptype s (indentation object)))
-
-(defvar *icon* 'plus) ; 'triangle
-(defvar *grid* t)     ; nil
-(setf climi::*border-default-padding* 0)
-
-(defun triangle (s x y o)
-  (flet ((triang (s) (draw-polygon* s '(0 0 1 2 2 0))))
-    (with-translation (s x y) 
-      (with-scaling (s 5) 
-        (surrounding-output-with-border (s)
-          (if o (triang s) (with-rotation (s (/ pi -2) (make-point 1 1)) (triang s))))))))
-
-(defun plus (s x y o) (surrounding-output-with-border (s) (if o (princ "--" s) (princ "+" s))))
-
-(defun draw-icon (s group)
-  "Draw the opened/closed icon"
-  (updating-output (s :cache-value (disp-inf group))
-    (with-output-as-presentation (s group 'icon :single-box t)
-      (let ((open-p (disp-inf group)))
-        (multiple-value-bind (x y) (stream-cursor-position s)
-          (funcall *icon* s x y open-p)
-          (stream-set-cursor-position s x y))))))
-
-;suppress the line in last child, recursively? <---
-(defun grid (s i n)
-  (let ((spc "     ") (bar "¦     ") (lin "¦---- "))
-    (cond ((= i 1))
-          ((= i 2) (princ spc s))
-          (t (if *grid*
-               (progn (princ spc s) (dotimes (x (- i 2)) (princ bar s)) (typecase n (node) (t (princ lin s))))
-               (dotimes (x (- i 1)) (princ spc s)))))))
-
-;;; ************************************************************
 (defmethod disp-tree (group pt s indent)
   "This presents the name part of both groups and nongroups"
   ;(updating-output (s :unique-id group :cache-value group)
@@ -81,7 +92,7 @@
   "This displays the icon and the group-contents of a group"
   (updating-output (s)
     (grid s indent group)
-    (draw-icon s group) (stream-increment-cursor-position s 10 nil) (princ " - " s)
+    (draw-icon s group)
     (call-next-method)
     (when (disp-inf group)
       (let ((i (indentation group))
@@ -123,7 +134,6 @@
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
 (defgeneric disp-info (f p))
-;(defgeneric disp-info ((f tree-info) p)    ; ev so <---- ??
 
 (defun tree-info-view (group ptype)
   (let ((f (make-application-frame 'tree-info :left 0 :top 0 :right 800 :bottom 400)))

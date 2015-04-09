@@ -54,3 +54,13 @@ The icons can be changed by
 The grid can be shown or suppressed by 
 (setf cw::*grid* nil) (setf cw::*grid* t) 
 ;==============
+
+
+----------------------------------------
+8.4.2015, better plus icon
+
+The icons can be changed by
+(setf cw::*icon* 'cw::plus) 
+(setf cw::*icon* 'cw::triangle)
+(setf cw::*icon* 'cw::triangle2)
+
