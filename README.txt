@@ -64,3 +64,12 @@ The icons can be changed by
 (setf cw::*icon* 'cw::triangle)
 (setf cw::*icon* 'cw::triangle2)
 
+
+----------------------------------------
+24.4.2015, another treeview example, a draft package documentation, using only "describe symbol"
+menu not yet working
+
+(cw-pkgdoc::pkg-doc :cl)
+
+(cw-pkgdoc::pkg-doc :clim)
+

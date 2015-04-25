@@ -31,26 +31,21 @@
 (defun p (s) (m% s) (with-rotation (s (/ pi -2) (make-point 5 5)) (m% s)))
 (defun plus (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (m% s) (p s)))))
 ;triangles
-(defun tri-m (s) (draw-polygon* s '(0 0 10 0 5 10)))
+(defun tri-m (s) (draw-polygon* s '(0 0 10 0 5 10) :ink +black+)) ; so gehts
 (defun tri-p (s) (draw-polygon* s '(0 0 10 5 0 10)))
 (defun triangle  (s x y o) (with-translation (s x y) (with-scaling (s 1)          (if o (tri-m s) (tri-p s)))))
 (defun triangle2 (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (tri-m s) (tri-p s)))))
 
 (defun draw-icon (s group)
-  "Draw the opened/closed icon"
-;  (updating-output (s :cache-value (disp-inf group))
-    (with-output-as-presentation (s group 'icon)
-      (let ((open-p (disp-inf group)))
-        (multiple-value-bind (x y) (stream-cursor-position s)
-          (funcall *icon* s x y open-p)
-          (stream-set-cursor-position s (+ 20 x) y)))))
-;  )
+  (with-output-as-presentation (s group 'icon)
+    (let ((open-p (disp-inf group)))
+      (multiple-value-bind (x y) (stream-cursor-position s)
+        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ 20 x) y)))))
 
 (defun spc (s) (stream-increment-cursor-position s 20 nil))
 (defun bar (s) 
   (multiple-value-bind (x y) (stream-cursor-position s)
-    (draw-line* s (+ x 5) (- y 5) (+ x 5) (+ y 15))      ; use line- text hight   <---
-    (stream-set-cursor-position s (+ 20 x) y)))
+    (draw-line* s (+ x 5) (- y 5) (+ x 5) (+ y 15)) (stream-set-cursor-position s (+ 20 x) y)))      ; use line or text hight   <---
 (defun lin (s) 
   (flet ((lin% (s) (draw-lines* s '(0 0 10 0   0 0 0 -10))))
     (multiple-value-bind (x y) (stream-cursor-position s) 
@@ -58,12 +53,11 @@
 
 ;suppress the line in last child, recursively? <---
 (defun grid (s i n)
-  (flet ((spc (s) (spc s)) (bar (s) (bar s)) (lin (s) (lin s)))
-    (cond ((= i 1))
-          ((= i 2) (spc s))
-          (t (if *grid*
-               (progn (spc s) (dotimes (x (- i 2)) (bar s)) (typecase n (node) (t (lin s))))
-               (dotimes (x (- i 1)) (spc s)))))))
+  (cond ((= i 1))
+        ((= i 2) (spc s))
+        (t (if *grid*
+             (progn (spc s) (dotimes (x (- i 2)) (bar s)) (typecase n (node) (t (lin s))))
+             (dotimes (x (- i 1)) (spc s))))))
 
 ;;; ************************************************************
 ;;; tree display helper methods
@@ -81,16 +75,12 @@
 
 (defmethod disp-tree (group pt s indent)
   "This presents the name part of both groups and nongroups"
-  ;(updating-output (s :unique-id group :cache-value group)
-  (updating-output (s :cache-value group)
     (typecase group
       (node (present (node-name group) pt :stream s))
-      (t (grid s indent group) (present (node-name group) pt :stream s)))
-    (terpri s)))
+      (t (grid s indent group) (present (node-name group) pt :stream s))) (terpri s))
 
 (defmethod disp-tree :around ((group node) pt s indent)
   "This displays the icon and the group-contents of a group"
-  (updating-output (s)
     (grid s indent group)
     (draw-icon s group)
     (call-next-method)
@@ -98,22 +88,16 @@
       (let ((i (indentation group))
             (type (item-ptype group pt)))
         (dolist (child (inf group))
-          (disp-tree child type s (+ indent i)))))))
+          (disp-tree child type s (+ indent i))))))
 
 ;;;************************************************************
 ;;; A generic application for viewing a tree
 (define-application-frame tree ()
   ((group :accessor group)
    (ptype :accessor ptype))
-  (:panes (tree :application :display-function 'display))
-  (:layouts (single tree)))
+  (:pane (make-pane 'application-pane :display-function 'display :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)))
 
-(defun display (f p)
-  (with-end-of-line-action (p :allow)
-    (with-end-of-page-action (p :allow)
-      ;(updating-output (p :unique-id :top-level)
-      (updating-output (p) 
-        (disp-tree (group f) (ptype f) p (indentation (group f)))))))
+(defun display (f p) (disp-tree (group f) (ptype f) p (indentation (group f))))
 
 (define-presentation-action toggle (icon command tree) (object window)
   (toggle object) (redisplay-frame-pane *application-frame* window))
@@ -129,7 +113,7 @@
  ((info :accessor info :initform ""))
   (:command-table (tree-info :inherit-from (tree)))
   (:panes 
-   (tree :application :display-function 'display :incremental-redisplay t)
+   (tree :application :display-function 'display :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)
    (info :application :display-function 'disp-info :incremental-redisplay t))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
