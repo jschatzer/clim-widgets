@@ -57,7 +57,8 @@
         ((= i 2) (spc s))
         (t (if *grid*
              (progn (spc s) (dotimes (x (- i 2)) (bar s)) (typecase n (node) (t (lin s))))
-             (dotimes (x (- i 1)) (spc s))))))
+             (progn (spc s) (dotimes (x (- i 2)) (spc s)) (typecase n (node) (t (spc s))))))))
+
 
 ;;; ************************************************************
 ;;; tree display helper methods
@@ -108,6 +109,7 @@
     (run-frame-top-level f)))
 
 ;;;************************************************************
+; ev remove this ??
 ;;; Generic 2-pane-application for viewing a tree with info
 (define-application-frame tree-info (tree)
  ((info :accessor info :initform ""))

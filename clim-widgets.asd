@@ -15,6 +15,6 @@
                (:file "calendar")
                (:file "tree-view")
                (:file "cw-test")
-               (:file "cw-pkgdoc")
+;               (:file "cw-pkgdoc")
                ))
 

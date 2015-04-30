@@ -66,10 +66,8 @@ The icons can be changed by
 
 
 ----------------------------------------
-24.4.2015, another treeview example, a draft package documentation, using only "describe symbol"
-menu not yet working
+24.4.2015, 30.4.15 another treeview example, a draft package documentation, using only "describe symbol"
 
-(cw-pkgdoc::pkg-doc :cl)
+(cw::pkg-doc)
 
-(cw-pkgdoc::pkg-doc :clim)
-
+(cw::pkg-doc :cl-fad)

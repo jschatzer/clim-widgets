@@ -1,16 +1,16 @@
-; to do list
+; todo
 ; video/movie player
-;
-;color chooser, see
-;;http://doc.gold.ac.uk/~mas01cr/tmp/clim-colours.lisp
-; (clim-colours::choose-colour)
-;
-;SEE CLIM:DEMO-DEMO for 
+; photo book
+
+; SEE CLIM:DEMO-DEMO for other widgets
 ;tab-gadget
 ;file chooser
 ;color chooser
 ;font chooser
 
+;color chooser, see
+;;http://doc.gold.ac.uk/~mas01cr/tmp/clim-colours.lisp
+; (clim-colours::choose-colour)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; PROBLEMS - TODO:
