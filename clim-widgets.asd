@@ -8,13 +8,14 @@
   :depends-on (mcclim
                simple-date-time local-time ;calendar
             ; for examples only 
-               cl-fad perlre closer-mop manifest nsort)
+               perlre nsort
+               cl-fad closer-mop manifest)
   :serial t
   :components ((:file "package")
                (:file "clim-widgets")
                (:file "calendar")
                (:file "tree-view")
                (:file "cw-test")
-;               (:file "cw-pkgdoc")
+;;;               (:file "cw-pkgdoc")
                ))
 

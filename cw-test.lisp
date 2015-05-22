@@ -1,7 +1,7 @@
 ;;; cw-test.lisp
-; p path, n node,
-(in-package clim-widgets)
-(named-readtables:in-readtable lol:lol-syntax) ; https://github.com/jschatzer/perlre/pull/2  
+
+(in-package cw-test)
+(named-readtables:in-readtable lol:lol-syntax)
 
 ;--------------------------------------------------------
 ;;; An application for viewing file directories, from http://osdir.com/ml/mcclim-devel/2009-08/msg00010.html
@@ -12,35 +12,27 @@
 (defun dn (p) (let ((lst (pathname-directory p))) (when (consp lst) (car (last lst)))))
 (defun fn (p) (file-namestring p))
 
-(defclass node-fs (node) ())  ; node-filesystem
-(defmethod node-name ((n node-fs)) (dn (sup n)))
+(defclass node-fs (cw:node) ())  ; node-filesystem
+(defmethod cw::node-name ((n node-fs)) (dn (cw::sup n)))
 
-(defmethod inf :around ((n node-fs))
-  (unless (slot-boundp n 'inf)
-    (let ((stuff (ls (sup n))))
-      (setf (inf n)
+(defmethod cw::inf :around ((n node-fs))
+  (unless (slot-boundp n 'cw::inf)
+    (let ((stuff (ls (cw::sup n))))
+      (setf (cw::inf n)
             (append (mapcar (lambda (p) (make-instance 'node-fs :sup (dp p))) (sort (remove-if-not #'d? stuff) #'nsort:nstring-lessp :key #'dn))
                     (sort (mapcar #'fn (remove-if #'d? stuff)) #'nsort:nstring-lessp)))))
   (call-next-method))
 
-(defun view-directory (d) (tree-view (make-instance 'node-fs :sup (dp d)) 'string))
+(defun view-directory (d) (cw:tree-view (make-instance 'node-fs :sup (dp d)) 'string))
 
 ;--------------------------------------------------------
 ;;; A trivial example to view a tree of nested lists
 ;--------------------------------------------------------
 (defparameter lst '(("icd" ("dgn" ("d1" ("dleaf1") ("dleaf2")) ("d2")) ("int" ("i1") ("i2")))))
 
-(defmethod node-name ((n node)) (sup n))
-
-(defmethod inf :around ((n node))
-  (unless (slot-boundp n 'inf)
-    (let ((stuff (gethash (sup n) *nodes*)))
-      (setf (inf n) (mapcar (lambda (x) (if (gethash x *nodes*) (make-instance 'node :sup x) x)) stuff))))
-  (call-next-method))
-
 (defun treeview (tree key) ;initial key
-  (t2h tree)  ; 1) create hash-table
-  (tree-view (make-instance 'node :sup key :disp-inf t) 'string))  ; 2) create initial display
+  (cw:t2h tree)  ; 1) create hash-table
+  (cw:tree-view (make-instance 'cw:node :sup key :disp-inf t) 'string))  ; 2) create initial display
 
 ;--------------------------------------------------------
 ;;; A small classification example, with instructions
@@ -74,11 +66,11 @@
      ("d.01.001009.003.0|003.0 Gastroenterite da Salmonella|
             Salmonellosi")))))))
 
-(define-application-frame icd9it (tree)
+(define-application-frame icd9it (cw:tree)
  ((info :accessor info :initform ""))
-  (:command-table (icd9it :inherit-from (tree)))
+  (:command-table (icd9it :inherit-from (cw:tree)))
   (:panes 
-   (tree :application :display-function 'display :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)
+   (tree :application :display-function 'cw:display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)
    (info :application :display-function 'disp-info :incremental-redisplay t))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
@@ -106,20 +98,17 @@
 (define-presentation-method present (item (type icd) s v &key) (format s "~a" (#~s'.*\|(.+)\|.*'\1's item)))
 (define-icd9it-command xx ((item 'icd :gesture :select)) (setf (info *application-frame*) (#~s'.*\|.+\|(.*)'\1's item)))
 
-(defun icd-info-view (group ptype)
-  (let ((f (make-application-frame 'icd9it :left 0 :top 0 :right 800 :bottom 400)))
-    (setf (group f) group (ptype f) ptype)
-    (run-frame-top-level f)))
-
 (defun icdview (tree key)
-  (t2h tree)
-  (icd-info-view (make-instance 'node :sup key :disp-inf t) 'icd))
+  (cw:t2h tree)
+  (cw:tree-view (make-instance 'cw:node :sup key :disp-inf t) 'icd 'icd9it :right 800))
 
 ;--------------------------------------------------------
 ;;; A class "browser"
 ;--------------------------------------------------------
 (defun class-p (sym) (if (ignore-errors (find-class sym)) sym))
 (defparameter classes (remove nil (mapcar #'class-p (loop for s being the external-symbols of :common-lisp collect s))))
+
+(defun defnode (sup inf) (setf (gethash sup cw::*nodes*) inf))
 
 (defun l2h (lst)
   "list to hash-table"
@@ -130,16 +119,16 @@
 
 (defun view-classes (tree key)
   (l2h tree)
-  (tree-view (make-instance 'node :sup key :disp-inf t) 'symbol))
+  (cw:tree-view (make-instance 'cw:node :sup key :disp-inf t) 'symbol))
 
 ;--------------------------------------------------------
 ;;; Class browser with description
 ;--------------------------------------------------------
-(define-application-frame class-browser (tree)
+(define-application-frame class-browser (cw:tree)
  ((info :accessor info :initform ""))
-  (:command-table (class-browser :inherit-from (tree)))
+  (:command-table (class-browser :inherit-from (cw:tree)))
   (:panes 
-   (tree :application :display-function 'display :incremental-redisplay t)
+   (tree :application :display-function 'cw:display-tree :incremental-redisplay t)
    (info :application :display-function 'disp-info :incremental-redisplay t))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
@@ -149,20 +138,15 @@
 (define-presentation-method present (item (type item) s v &key) (format s "~a" item))
 (define-class-browser-command xxx ((item 'item :gesture :select)) (setf (info *application-frame*) item))
 
-(defun tree-info-view% (group ptype)
-  (let ((f (make-application-frame 'class-browser :left 0 :top 0 :right 800 :bottom 400)))
-    (setf (group f) group (ptype f) ptype)
-    (run-frame-top-level f)))
-
 (defun view-classes-with-description (tree key)
   (l2h tree)
-  (tree-info-view% (make-instance 'node :sup key :disp-inf t) 'item))
+  (cw:tree-view (make-instance 'cw:node :sup key :disp-inf t) 'item 'class-browser :right 800))
 
 ;--------------------------------------------------------
 ;;; Package "browser", a simple draft of a package documentation
 ;--------------------------------------------------------
-; 1) app-logic and helper --------------
-; ev todo: remove second common-lisp from pkg-menu, remove special forms from other categories
+; 1) app-logic and helper
+; ev todo: remove second common-lisp from pkg-menu, remove special forms from other categories, rm cclim colors from variable
 (defparameter pkg-list (cons :common-lisp (sort (mapcar (lambda (x) (intern (package-name x) :keyword)) (list-all-packages)) #'string<)))
 ; color-names are mixed case strings, without + or -, e.g. "antique white"
 (defparameter colors (mapcar (lambda (x) (#~s'.*'+\&+' (#~s' '-'g x))) (mapcar #'fourth clim-internals::*xpm-x11-colors*)))
@@ -191,7 +175,17 @@
         (t (cdr l))))
 (defun pack (l) (if (null l) nil (cons (pega l) (pack (tira l)))))
 
+;do it recursive, all -
 (defun mktree (l) (mapcar (lambda (x) (if (null (cdr x)) x (cons (key (car x)) (mapcar #'list x)))) (pack l)))
+
+#|
+(defun mktree (l) (mapcar (lambda (x) 
+                            (cond 
+                              ((null (cdr x)) x)
+                              ((= 2 (length (ppcre:split "-" (car x)))) (cons (key (car x)) (mapcar #'list x)))
+                              (t (cons (second (ppcre:split "-" (car x))) (mapcar #'list x)))))
+                          (pack l)))
+|#
 
 ; from Peter Seibel's "manifest" quicklisp package
 (defun present-symbols%% (pkg)
@@ -207,44 +201,27 @@
         ((eql p (or :common-lisp :cl)) (cons (spec-op) (mapcar (lambda (x) (cons (car x) (mktree (cdr x)))) (present-symbols%% p))))
         (t (mapcar (lambda (x) (cons (car x) (mktree (cdr x)))) (present-symbols%% p)))))
 
-; 2) gui ------------------------------- nodes should not be sensible <-----
-(define-application-frame pkg-doc (tree)
+; 2) gui -- nodes should not be sensible
+(define-application-frame pkg-doc (cw:tree)
  ((info :accessor info :initform ""))
-  (:command-table (pkg-doc :inherit-from (tree)))
+  (:command-table (pkg-doc :inherit-from (cw:tree)))
   (:panes 
-   (tree :application :display-function 'display :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)
+   (tree :application :display-function 'cw:display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)
    (info :application :display-function 'disp-info :incremental-redisplay t))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
 (defmethod disp-info ((f pkg-doc) p) (describe (info *application-frame*) p))
 
-(define-presentation-type sym () :inherit-from 'symbol)
-
-(define-pkg-doc-command show-info ((item 'sym :gesture :select))   
+(define-pkg-doc-command show-info ((item 'symbol :gesture :select))   
   (setf (info *application-frame*) item))
 
-(defmethod inf :around ((n pkg-doc))
-  (unless (slot-boundp n 'inf)
-      (setf (inf n) 
-            (mapcar (lambda (x) 
-                      (if (gethash x cw::*nodes*) 
-                        (make-instance 'pkg-doc :sup x :info x)
-                        x))
-                    (gethash (sup n) cw::*nodes*))))
-  (call-next-method))
-
-(defun pkg-doc-view (group ptype)
-  (let ((f (make-application-frame 'pkg-doc :left 0 :top 0 :right 800 :bottom 400)))
-    (setf (group f) group (ptype f) ptype)
-    (run-frame-top-level f)))
-
 (defun tview (tree key)
-  (cw::t2h tree)
-  (pkg-doc-view (make-instance 'cw::node :sup key :disp-inf t) 'sym))
+  (cw:t2h tree)
+  (cw:tree-view (make-instance 'cw:node :sup key :disp-inf t) 'symbol 'pkg-doc :right 800))
+
+(defun pkg-doc (&optional (pkg :clim)) (tview (list (cons pkg (symbol-tree pkg))) pkg))
 
 ;creates a separtate window for every new package
 (define-pkg-doc-command (packages :menu t) ()
   (let ((pkg (menu-choose pkg-list)))
    (tview (list (cons pkg (symbol-tree pkg))) pkg)))
-
-(defun pkg-doc (&optional (pkg :clim)) (tview (list (cons pkg (symbol-tree pkg))) pkg))

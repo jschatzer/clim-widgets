@@ -12,6 +12,10 @@
 ;;http://doc.gold.ac.uk/~mas01cr/tmp/clim-colours.lisp
 ; (clim-colours::choose-colour)
 
+;file-selector --> ernestine
+
+;help     --> ernestine help.lisp
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; PROBLEMS - TODO:
 ;

@@ -71,3 +71,28 @@ The icons can be changed by
 (cw::pkg-doc)
 
 (cw::pkg-doc :cl-fad)
+
+
+----------------------------------------
+15.5.2015, treeview examples in separate package, cw-test, to experiment with pubblic api
+
+(ql:quickload :clim-widgets)
+
+(cw-test::view-directory "/")  
+
+(cw-test::treeview cw-test::lst "icd")
+
+(cw-test::icdview cw-test::icds "d|diagnosi|")
+
+(cw-test::view-classes cw-test::classes t)
+
+(cw-test::view-classes-with-description cw-test::classes t) 
+
+(cw-test::view-classes-with-description cw-test::classes 'condition)
+
+(cw-test::pkg-doc)
+
+(cw-test::pkg-doc :cl-fad)
+
+
+
