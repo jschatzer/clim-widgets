@@ -126,3 +126,20 @@
   (unless (slot-boundp n 'inf) 
     (setf (inf n) (mapcar (lambda (x) (if (gethash x *nodes*) (make-instance 'node :sup x) x)) (gethash (sup n) *nodes*))))
   (call-next-method))
+
+;;;************************************************************
+; form http://www.ic.unicamp.br/~meidanis/courses/problemas-lisp/L-99_Ninety-Nine_Lisp_Problems.html
+(defmethod key ((s symbol)) (#~s'-.*''(symbol-name s)))
+;(defmethod key ((s string)) (#~s'-.*'' s))
+
+(defun pega (l)
+  (cond ((null l) nil)
+        ((null (cdr l)) l)
+        ((equal (key (car l)) (key (cadr l))) (cons (car l) (pega (cdr l))))
+        (t (list (car l)))))
+(defun tira (l)
+  (cond ((null l) nil)
+        ((null (cdr l)) nil)
+        ((equal (key (car l)) (key (cadr l))) (tira (cdr l)))
+        (t (cdr l))))
+(defun pack (l) (if (null l) nil (cons (pega l) (pack (tira l)))))

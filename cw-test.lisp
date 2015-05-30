@@ -1,7 +1,7 @@
 ;;; cw-test.lisp
 
 (in-package cw-test)
-(named-readtables:in-readtable lol:lol-syntax)
+;(named-readtables:in-readtable lol:lol-syntax)
 
 ;--------------------------------------------------------
 ;;; An application for viewing file directories, from http://osdir.com/ml/mcclim-devel/2009-08/msg00010.html
@@ -154,38 +154,15 @@
 (defparameter clim-es (mapcar #'symbol-name (remove-if-not #'constant-p (loop for s being the external-symbols of :clim collect s))))
 (defun clim-non-color-contstants () (set-difference clim-es colors :test 'string-equal))
 (defun clim-color-contstants () (intersection clim-es colors :test 'string-equal))
+
+(defun mktree (l) (mapcar (lambda (x) (if (null (cdr x)) x (cons (cw:key (car x)) (mapcar #'list x)))) (cw:pack l)))
+
 (defun clim-colors ()
   "divide clim-constants into colors and other constants"
   (let ((o (mapcar (lambda (x) (find-symbol x :clim)) (sort (clim-non-color-contstants) #'string<)))     ;other constants
         (c (mapcar (lambda (x) (find-symbol x :clim)) (sort (clim-color-contstants) #'nsort:nstring<)))) ;color-name constants
     (cons :constant (cons (cons 'color-names (mktree c)) (mktree o)))))
 (defun spec-op () (cons 'special-operator (mktree (sort (remove-if-not #'special-operator-p (loop for s being the external-symbols of :cl collect s)) #'string<))))
-
-; form http://www.ic.unicamp.br/~meidanis/courses/problemas-lisp/L-99_Ninety-Nine_Lisp_Problems.html
-(defun key (s) (subseq (symbol-name s) 0 (position #\- (symbol-name s))))
-(defun pega (l)
-  (cond ((null l) nil)
-        ((null (cdr l)) l)
-        ((equal (key (car l)) (key (cadr l))) (cons (car l) (pega (cdr l))))
-        (t (list (car l)))))
-(defun tira (l)
-  (cond ((null l) nil)
-        ((null (cdr l)) nil)
-        ((equal (key (car l)) (key (cadr l))) (tira (cdr l)))
-        (t (cdr l))))
-(defun pack (l) (if (null l) nil (cons (pega l) (pack (tira l)))))
-
-;do it recursive, all -
-(defun mktree (l) (mapcar (lambda (x) (if (null (cdr x)) x (cons (key (car x)) (mapcar #'list x)))) (pack l)))
-
-#|
-(defun mktree (l) (mapcar (lambda (x) 
-                            (cond 
-                              ((null (cdr x)) x)
-                              ((= 2 (length (ppcre:split "-" (car x)))) (cons (key (car x)) (mapcar #'list x)))
-                              (t (cons (second (ppcre:split "-" (car x))) (mapcar #'list x)))))
-                          (pack l)))
-|#
 
 ; from Peter Seibel's "manifest" quicklisp package
 (defun present-symbols%% (pkg)

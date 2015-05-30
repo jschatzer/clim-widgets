@@ -12,6 +12,7 @@
    display-tree  ; 9.5.15
    tree-view
    t2h ; *nodes*
+   key pack
 ;   tree-info tree-info-view disp-info
    ))
 
