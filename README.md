@@ -1,6 +1,7 @@
 Clim-Widgets should/could be a small collection of clim widgets. 
 
 - calendar
+- clock
 - treeview
 
 
@@ -15,6 +16,11 @@ Examples:
 (clim-widgets:calendar)
 
 (cw:calendar 9 1974)
+
+
+- CLOCK
+
+(cw:clock)
 
 
 - TREEVIEW, some usage example, definitive api not yet available

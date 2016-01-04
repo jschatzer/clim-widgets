@@ -109,6 +109,13 @@
     (setf (group f) gp (ptype f) pt)
     (run-frame-top-level f)))
 
+(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) (title "XXX") &allow-other-keys)
+  (let ((f (make-application-frame frame :left left :top top :right right :bottom bottom :title title)))
+    (setf (group f) gp (ptype f) pt)
+    (run-frame-top-level f)))
+
+
+
 ;;;************************************************************
 ;;; helper functions to put tree nodes with their respective values into a hash-table for faster retreeving
 (defparameter *nodes* (make-hash-table :test #'equal))

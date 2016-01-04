@@ -17,5 +17,6 @@
                (:file "tree-view")
                (:file "cw-test")
 ;;;               (:file "cw-pkgdoc")
+               (:file "clock")
                ))
 

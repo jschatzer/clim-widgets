@@ -14,6 +14,7 @@
    t2h ; *nodes*
    key pack
 ;   tree-info tree-info-view disp-info
+   clock
    ))
 
 (defpackage cw-test 
