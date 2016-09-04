@@ -31,27 +31,45 @@
 ;; plus
 (defun m% (s) (draw-line* s 2.5 5 7.5 5))    ; m is used in calendar <-----
 (defun p (s) (m% s) (with-rotation (s (/ pi -2) (make-point 5 5)) (m% s)))
-(defun plus (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (m% s) (p s)))))
+
+;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (m% s) (p s)))))
+;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s 2) (rect s) (if o (m% s) (p s)))))
+;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s (stream-line-height s --textstyle---)) (rect s) (if o (m% s) (p s)))))
+(defun plus (s x y o) (with-translation (s x y) (with-scaling (s (/ (stream-line-height s) 20)) (rect s) (if o (m% s) (p s))))) ;geht fast gut
+
+
 ;; triangles
 (defun tri-m (s) (draw-polygon* s '(0 0 10 0 5 10) :ink +black+)) ; so gehts
 (defun tri-p (s) (draw-polygon* s '(0 0 10 5 0 10)))
 (defun triangle  (s x y o) (with-translation (s x y) (with-scaling (s 1)          (if o (tri-m s) (tri-p s)))))
 (defun triangle2 (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (tri-m s) (tri-p s)))))
 
+
+;advance cursor,, was 20
+;(o:p ac (* 2 (stream-character-width s #\o)))
+;(define-symbol-macro ac (stream-character-width 's #\m))
+(defmacro ac (s) `(stream-character-width ,s #\m)) ; ;advance cursor,, was 20
+
+
+
 (defun draw-icon (s group)
   (with-output-as-presentation (s group 'icon)
     (let ((open-p (disp-inf group)))
       (multiple-value-bind (x y) (stream-cursor-position s)
-        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ 20 x) y)))))
+;        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ 20 x) y)))))
+        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ (ac s) x) y)))))
 
-(defun spc (s) (stream-increment-cursor-position s 20 nil))
+;        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ (* 2 (stream-char(ac s)ter-width s #\o)) x) y)))))
+
+
+(defun spc (s) (stream-increment-cursor-position s (ac s) nil))
 (defun bar (s) 
   (multiple-value-bind (x y) (stream-cursor-position s)
-    (draw-line* s (+ x 5) (- y 5) (+ x 5) (+ y 15) :line-dashes *dashed-lines*) (stream-set-cursor-position s (+ 20 x) y)))      ; use line or text hight   <---
+    (draw-line* s (+ x 5) (- y 5) (+ x 5) (+ y 15) :line-dashes *dashed-lines*) (stream-set-cursor-position s (+ (ac s) x) y)))      ; use line or text hight   <---
 (defun lin (s) 
   (flet ((lin% (s) (draw-lines* s '(0 0 10 0   0 0 0 -10) :line-dashes *dashed-lines*)))
     (multiple-value-bind (x y) (stream-cursor-position s) 
-      (with-translation (s (+ x 5) (+ y 8)) (with-scaling (s 1 1.5) (lin% s))) (stream-set-cursor-position s (+ 20 x) y))))
+      (with-translation (s (+ x 5) (+ y 8)) (with-scaling (s 1 1.5) (lin% s))) (stream-set-cursor-position s (+ (ac s) x) y))))
 
 ;suppress the line in last child, recursively? <---
 (defun grid (s i n)
@@ -77,25 +95,31 @@
 
 (defmethod disp-tree (item pt s indent)
   "This presents the name of both nodes and leaves"
-    (typecase item
-      (node (present (node-name item) pt :stream s))
-      (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s))
+  (with-slots (txtsize) *application-frame*
+    (with-text-size (s txtsize)
+      (typecase item
+        (node (present (node-name item) pt :stream s))
+        (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s))))
 
 (defmethod disp-tree :around ((item node) pt s indent)
   "This displays the icon and the children of a node"
-    (grid s indent item)
-    (draw-icon s item)
-    (call-next-method)
-    (when (disp-inf item)
-      (let ((i (indentation item))
-            (type (item-ptype item pt)))
-        (dolist (child (inf item))
-          (disp-tree child type s (+ indent i))))))
+  (with-slots (txtsize) *application-frame*
+    (with-text-size (s txtsize)
+      (grid s indent item)
+      (draw-icon s item)
+      (call-next-method)
+      (when (disp-inf item)
+        (let ((i (indentation item))
+              (type (item-ptype item pt)))
+          (dolist (child (inf item))
+            (disp-tree child type s (+ indent i))))))))
 
 ;;;************************************************************
 ;;; A generic application for viewing a tree
 (define-application-frame tree ()
-  ((group :accessor group)
+  (
+   (txtsize :accessor txtsize :initform :normal)
+   (group :accessor group)
    (ptype :accessor ptype))
   (:pane (make-pane 'application-pane :display-function 'display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)))
 
@@ -104,10 +128,15 @@
 (define-presentation-action toggle (icon command tree) (object window)
   (toggle object) (redisplay-frame-pane *application-frame* window))
 
-(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) &allow-other-keys)
-  (let ((f (make-application-frame frame :left left :top top :right right :bottom bottom)))
+; 4.9.16, pretty-name, ev include other or all keywords for make-application-frame
+(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) pretty-name &allow-other-keys)
+  (let ((f (make-application-frame frame :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
     (setf (group f) gp (ptype f) pt)
     (run-frame-top-level f)))
+
+(define-tree-command (txt-size :menu t) ()
+  (setf (txtsize *application-frame*)
+        (menu-choose '(:tiny :very-small :small :smaller :normal :larger :large :very-large :huge))))
 
 ;;;************************************************************
 ;;; helper functions to put tree nodes with their respective values into a hash-table for faster retreeving
@@ -143,3 +172,85 @@
         ((equal (key (car l)) (key (cadr l))) (tira (cdr l)))
         (t (cdr l))))
 (defun pack (l) (if (null l) nil (cons (pega l) (pack (tira l)))))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+@END
+
+(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) &allow-other-keys)
+  (let ((f (make-application-frame frame :left left :top top :right right :bottom bottom)))
+    (setf (group f) gp (ptype f) pt)
+    (run-frame-top-level f)))
+
+;für pretty name, geht 4.9.16
+(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) pretty-name &allow-other-keys)
+  (let ((f (make-application-frame frame :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
+    (setf (group f) gp (ptype f) pt)
+    (run-frame-top-level f)))
+
+(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) pretty-name &allow-other-keys)
+  (let ((f (make-application-frame frame :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
+    (setf (group f) gp (ptype f) pt)
+    (run-frame-top-level f)))
+
+
+; with keystroke
+#;(define-tree-command (txt-size :menu t :keystroke (#\+ :control)) ()
+                        (setf (txtsize *application-frame*)
+                                      (menu-choose '(:tiny :very-small :small :smaller :normal :larger :large :very-large :huge))))
+
+
+#|
+;;;;;;;;;;;;;;;;;;;,
+(defmethod disp-tree (item pt s indent)
+  "This presents the name of both nodes and leaves"
+  (with-scaling (s 2)
+  (with-slots (txtsize) *application-frame*
+    (with-text-size (s txtsize)
+    (typecase item
+      (node (present (node-name item) pt :stream s))
+      (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s)))))
+
+(defmethod disp-tree :around ((item node) pt s indent)
+  "This displays the icon and the children of a node"
+  (with-scaling (s 2)
+
+  (with-slots (txtsize) *application-frame*
+    (with-text-size (s txtsize)
+    (grid s indent item)
+    (draw-icon s item)
+    (call-next-method)
+    (when (disp-inf item)
+      (let ((i (indentation item))
+            (type (item-ptype item pt)))
+        (dolist (child (inf item))
+          (disp-tree child type s (+ indent i)))))))))
+;;;;
+(defmethod disp-tree (item pt s indent)
+  "This presents the name of both nodes and leaves"
+  (with-drawing-options (s :textstyle :transformation )
+  (with-slots (txtsize) *application-frame*
+    (with-text-size (s txtsize)
+    (typecase item
+      (node (present (node-name item) pt :stream s))
+      (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s)))))
+
+(defmethod disp-tree :around ((item node) pt s indent)
+  "This displays the icon and the children of a node"
+  (with-scaling (s 2)
+
+  (with-slots (txtsize) *application-frame*
+    (with-text-size (s txtsize)
+    (grid s indent item)
+    (draw-icon s item)
+    (call-next-method)
+    (when (disp-inf item)
+      (let ((i (indentation item))
+            (type (item-ptype item pt)))
+        (dolist (child (inf item))
+          (disp-tree child type s (+ indent i)))))))))
+|#
+
+
+
