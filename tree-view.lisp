@@ -17,10 +17,12 @@
 
 ;;; ************************************************************
 ;;; icons and grid
+;textsize ev mit stream-line-height oder text-style  <--- ???
+(defun scwm (s n) (* n (/ (stream-character-width s #\m) 12)))  ; stream-character-width #\m, helper textsize
 
 (defvar *icon* 'plus)     ; 'triangle 'triangle2
 (defvar *grid* t)         ; nil
-(defvar *dashed-lines* t) ;nil
+(defvar *dashed-lines* t) ; nil
 
 (define-presentation-type icon ())
 (define-presentation-method highlight-presentation ((type icon) r s st) :unhighlight)
@@ -31,45 +33,29 @@
 ;; plus
 (defun m% (s) (draw-line* s 2.5 5 7.5 5))    ; m is used in calendar <-----
 (defun p (s) (m% s) (with-rotation (s (/ pi -2) (make-point 5 5)) (m% s)))
-
-;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (m% s) (p s)))))
-;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s 2) (rect s) (if o (m% s) (p s)))))
-;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s (stream-line-height s --textstyle---)) (rect s) (if o (m% s) (p s)))))
-(defun plus (s x y o) (with-translation (s x y) (with-scaling (s (/ (stream-line-height s) 20)) (rect s) (if o (m% s) (p s))))) ;geht fast gut
-
-
+(defun plus (s x y o) (with-translation (s x y) (with-scaling (s (scwm s 1)) (rect s) (if o (m% s) (p s)))))
 ;; triangles
-(defun tri-m (s) (draw-polygon* s '(0 0 10 0 5 10) :ink +black+)) ; so gehts
+(defun tri-m (s) (draw-polygon* s '(0 0 10 0 5 10) :ink +black+))
 (defun tri-p (s) (draw-polygon* s '(0 0 10 5 0 10)))
-(defun triangle  (s x y o) (with-translation (s x y) (with-scaling (s 1)          (if o (tri-m s) (tri-p s)))))
-(defun triangle2 (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (tri-m s) (tri-p s)))))
-
-
-;advance cursor,, was 20
-;(o:p ac (* 2 (stream-character-width s #\o)))
-;(define-symbol-macro ac (stream-character-width 's #\m))
-(defmacro ac (s) `(stream-character-width ,s #\m)) ; ;advance cursor,, was 20
-
-
+(defun triangle  (s x y o) (with-translation (s x y) (with-scaling (s (scwm s 1))          (if o (tri-m s) (tri-p s)))))
+(defun triangle2 (s x y o) (with-translation (s x y) (with-scaling (s (scwm s 1)) (rect s) (if o (tri-m s) (tri-p s)))))
 
 (defun draw-icon (s group)
   (with-output-as-presentation (s group 'icon)
     (let ((open-p (disp-inf group)))
       (multiple-value-bind (x y) (stream-cursor-position s)
-;        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ 20 x) y)))))
-        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ (ac s) x) y)))))
+        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ (scwm s 20) x) y)))))
 
-;        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ (* 2 (stream-char(ac s)ter-width s #\o)) x) y)))))
+(defun spc (s) (stream-increment-cursor-position s (scwm s 20) nil))
 
-
-(defun spc (s) (stream-increment-cursor-position s (ac s) nil))
 (defun bar (s) 
   (multiple-value-bind (x y) (stream-cursor-position s)
-    (draw-line* s (+ x 5) (- y 5) (+ x 5) (+ y 15) :line-dashes *dashed-lines*) (stream-set-cursor-position s (+ (ac s) x) y)))      ; use line or text hight   <---
+    (draw-line* s (+ x (scwm s 5)) (- y (scwm s 5)) (+ x (scwm s 5)) (+ y (scwm s 15)) :line-dashes *dashed-lines*) (stream-set-cursor-position s (+ (scwm s 20) x) y)))
+
 (defun lin (s) 
   (flet ((lin% (s) (draw-lines* s '(0 0 10 0   0 0 0 -10) :line-dashes *dashed-lines*)))
     (multiple-value-bind (x y) (stream-cursor-position s) 
-      (with-translation (s (+ x 5) (+ y 8)) (with-scaling (s 1 1.5) (lin% s))) (stream-set-cursor-position s (+ (ac s) x) y))))
+      (with-translation (s (+ x (scwm s 5)) (+ y (scwm s 8))) (with-scaling (s (scwm s 1) (scwm s 1.5)) (lin% s))) (stream-set-cursor-position s (+ (scwm s 20) x) y))))
 
 ;suppress the line in last child, recursively? <---
 (defun grid (s i n)
@@ -95,24 +81,22 @@
 
 (defmethod disp-tree (item pt s indent)
   "This presents the name of both nodes and leaves"
-  (with-slots (txtsize) *application-frame*
-    (with-text-size (s txtsize)
-      (typecase item
-        (node (present (node-name item) pt :stream s))
-        (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s))))
+  (with-text-size (s (txtsize *application-frame*))  ; geht
+    (typecase item
+      (node (present (node-name item) pt :stream s))
+      (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s)))
 
 (defmethod disp-tree :around ((item node) pt s indent)
   "This displays the icon and the children of a node"
-  (with-slots (txtsize) *application-frame*
-    (with-text-size (s txtsize)
-      (grid s indent item)
-      (draw-icon s item)
-      (call-next-method)
-      (when (disp-inf item)
-        (let ((i (indentation item))
-              (type (item-ptype item pt)))
-          (dolist (child (inf item))
-            (disp-tree child type s (+ indent i))))))))
+  (with-text-size (s (txtsize *application-frame*))
+    (grid s indent item)
+    (draw-icon s item)
+    (call-next-method)
+    (when (disp-inf item)
+      (let ((i (indentation item))
+            (type (item-ptype item pt)))
+        (dolist (child (inf item))
+          (disp-tree child type s (+ indent i)))))))
 
 ;;;************************************************************
 ;;; A generic application for viewing a tree
@@ -175,6 +159,7 @@
 
 
 
+#|
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 @END
 
@@ -253,4 +238,97 @@
 |#
 
 
+;--------
+(stream-line-height s)
 
+(stream-character-width s #\m)
+
+;--------
+
+
+;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (m% s) (p s)))))
+;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s 2) (rect s) (if o (m% s) (p s)))))
+;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s (stream-line-height s --textstyle---)) (rect s) (if o (m% s) (p s)))))
+
+;geht
+;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s (/ (stream-line-height s) 20)) (rect s) (if o (m% s) (p s))))) ;geht fast gut
+;
+
+;(defun triangle  (s x y o) (with-translation (s x y) (with-scaling (s 1)          (if o (tri-m s) (tri-p s)))))
+
+;(defun triangle2 (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (tri-m s) (tri-p s)))))
+
+
+;advance cursor,, was 20
+;(o:p ac (* 2 (stream-character-width s #\o)))
+;(define-symbol-macro ac (stream-character-width 's #\m))
+;geht
+;(defmacro ac (s) `(stream-character-width ,s #\m)) ; ;advance cursor,, was 20
+
+
+
+;        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ 20 x) y)))))
+
+;        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ (ac s) x) y)))))
+
+
+;    (draw-line* s (+ x 5) (- y 5) (+ x 5) (+ y 15) :line-dashes *dashed-lines*) (stream-set-cursor-position s (+ (ac s) x) y)))      ; use line or text hight   <---
+
+;    (draw-line* s (+ x 5) (- y 5) (+ x 5) (+ y 15) :line-dashes *dashed-lines*) (stream-set-cursor-position s (+ (scwm s 20) x) y)))      ; use line or text hight   <---
+      ; use line or text hight   <---
+;      (with-translation (s (+ x 5) (+ y 8)) (with-scaling (s 1 1.5) (lin% s))) (stream-set-cursor-position s (+ (ac s) x) y))))
+
+;      (with-translation (s (+ x 5) (+ y 8)) (with-scaling (s 1 1.5) (lin% s))) (stream-set-cursor-position s (+ (scwm s 20) x) y))))
+
+
+;(defun spc (s) (stream-increment-cursor-position s (ac s) nil))
+#|
+#;(defmethod disp-tree (item pt s indent)
+  "This presents the name of both nodes and leaves"
+  (with-slots (txtsize) *application-frame*
+    (with-text-size (s txtsize)
+      (typecase item
+        (node (present (node-name item) pt :stream s))
+        (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s))))
+
+#;(defmethod disp-tree :around ((item node) pt s indent)
+  "This displays the icon and the children of a node"
+  (with-slots (txtsize) *application-frame*
+    (with-text-size (s txtsize)
+      (grid s indent item)
+      (draw-icon s item)
+      (call-next-method)
+      (when (disp-inf item)
+        (let ((i (indentation item))
+              (type (item-ptype item pt)))
+          (dolist (child (inf item))
+            (disp-tree child type s (+ indent i))))))))
+|#
+
+(defmethod disp-tree (item pt s indent)
+  "This presents the name of both nodes and leaves"
+;  (with-slots (txtsize) *application-frame*    ; geht
+;    (with-text-size (s (slot-value *application-frame* 'txtsize))  ; geht
+    (with-text-size (s (txtsize *application-frame*))  ; geht
+      (typecase item
+        (node (present (node-name item) pt :stream s))
+        (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s)))
+;)
+
+(defmethod disp-tree :around ((item node) pt s indent)
+  "This displays the icon and the children of a node"
+;  (with-slots (txtsize) *application-frame*
+;    (with-text-size (s txtsize)
+     (with-text-size (s (txtsize *application-frame*))
+      (grid s indent item)
+      (draw-icon s item)
+      (call-next-method)
+      (when (disp-inf item)
+        (let ((i (indentation item))
+              (type (item-ptype item pt)))
+          (dolist (child (inf item))
+            (disp-tree child type s (+ indent i)))))))
+;)
+
+
+|#
