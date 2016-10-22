@@ -1,0 +1,3 @@
+20.10.16
+- incremental redisplay problem with +/- icons
+- pointer should not be visible behind icons

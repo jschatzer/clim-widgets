@@ -1,20 +1,19 @@
-;;; cw-test.lisp
+;;; cw-examples.lisp
 
-(in-package cw-test)
-;(in-package cw-examples)
+(in-package cw-examples)
 
-#|
 
 (defmacro proc (fn)
   `(progn 
      (clim-sys:make-process (lambda () ,fn))
-     (sleep 1)))
+     (sleep 2)))
 
 (defun run-all-examples ()
   (proc (cw:calendar))
   (proc (cw:digital-clock-eu))
   (proc (cw:clock))
-  (proc (cw:treeview-strings lst "icd")) ; trivial-example
+  (proc (cw:treeview-strings stgtree "icd"))
+  (proc (cw:treeview-symbols symtree 'icd))
   (proc (cw:list-dir (user-homedir-pathname)))
   (proc (class-browser1 'number))
   (proc (class-browser2 'condition))
@@ -91,12 +90,11 @@
   :cc symbol
   :cy eql
   :nn (class-name (find-class (cw:sup cw:n)))
-;  :ln (file-namestring (cw:sup n))
   :c  (mapcar 'class-name (closer-mop:class-direct-subclasses (find-class (cw:sup cw:n))))
   :cp (closer-mop:class-direct-subclasses (find-class cw:n)))
 
 ;;; one-pane
-(defun class-browser1 (key) ;initial key   ; ev treeview-class-browser
+(defun class-browser1 (key) ;initial key
   (cw:tree-view (make-instance 'node-cb 
                             :sup key  ; key is a symbol which names a class <----- 
                             :disp-inf t) 'symbol))
@@ -189,8 +187,8 @@
     (tview (list (cons p (cw:sym2stg (symbol-tree pkg)))) p)))
 
 ;------------------------
-;;;;; data for trivial-example above
-(defparameter lst
+; data for trivial-example above
+(defparameter stgtree
   '(("icd" 
      ("dgn" 
       ("d1" 
@@ -210,11 +208,8 @@
        ("ileaf12"))
       ("i2")))))
 
-;--------------------------------------------------------------------------------
-;?????
-;--does not run ok, the same problem with type symbol as below with class-browser and pkg-browser???
-; DO THE SAME WITH A SYMBOL-TREE <--------------
-(defparameter lst1
+; do the same with a symbol-tree
+(defparameter symtree
   '((icd 
      (dgn 
       (d1 
@@ -233,4 +228,4 @@
         (ileaf22))
        (ileaf12))
       (i2)))))
-|#
+

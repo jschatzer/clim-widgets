@@ -2,7 +2,8 @@
 ;;; trying incremental redisplay, switch layout not working, hoping to get some help
 ;;; :incremental-redisplay nil  <-- 
 
-(in-package #:clim-widgets)
+;(in-package #:clim-widgets)
+(in-package cw-calendar)
 ;--------------------------------------
 ; app-logic and  helper
 ;--------------------------------------

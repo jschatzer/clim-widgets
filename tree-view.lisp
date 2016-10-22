@@ -10,325 +10,205 @@
 ;;; Thanks to Scott McKay for solving an incremental redisplay problem.
 ; =========================================================================================
 
-(in-package clim-widgets)
+(in-package cw-treeview)
 
-;updating-output with/without :unique-id -- for performance?
-;(defmethod print-object ((self directory-display) stream) (format stream "#<~A>" (node-name self))) ;überlegen 
-
-;;; ************************************************************
-;;; icons and grid
-;textsize ev mit stream-line-height oder text-style  <--- ???
-(defun scwm (s n) (* n (/ (stream-character-width s #\m) 12)))  ; stream-character-width #\m, helper textsize
-
-(defvar *icon* 'plus)     ; 'triangle 'triangle2
-(defvar *grid* t)         ; nil
-(defvar *dashed-lines* t) ; nil
+;************************************************************
+; icons and grid
+;************************************************************
+(defvar icon 'plus)     ; 'triangle 'triangle2
+(defvar grid t)         ; nil
+(defvar dashed-lines t) ; nil
 
 (define-presentation-type icon ())
 (define-presentation-method highlight-presentation ((type icon) r s st) :unhighlight)
 (define-presentation-method present (o (type icon) s v &key) (disp-tree o ptype s (indentation o)))
 
-;; general rectangle
-(defun rect (s) (draw-rectangle* s 0 0 10 10 :filled nil) (draw-lines* s '(5 -2 5 -5   12 5 15 5)))
-;; plus
-(defun m% (s) (draw-line* s 2.5 5 7.5 5))    ; m is used in calendar <-----
-(defun p (s) (m% s) (with-rotation (s (/ pi -2) (make-point 5 5)) (m% s)))
-(defun plus (s x y o) (with-translation (s x y) (with-scaling (s (scwm s 1)) (rect s) (if o (m% s) (p s)))))
-;; triangles
-(defun tri-m (s) (draw-polygon* s '(0 0 10 0 5 10) :ink +black+))
-(defun tri-p (s) (draw-polygon* s '(0 0 10 5 0 10)))
-(defun triangle  (s x y o) (with-translation (s x y) (with-scaling (s (scwm s 1))          (if o (tri-m s) (tri-p s)))))
-(defun triangle2 (s x y o) (with-translation (s x y) (with-scaling (s (scwm s 1)) (rect s) (if o (tri-m s) (tri-p s)))))
+(defclass item ()
+  ((sup :accessor sup :initarg :sup)  ; ev name
+   (initial-space :accessor initial-space :initarg :initial-space :initform 0)))
+
+(defclass leaf (item) ())  ; leaf shall/may not be a superclass of node 
+
+(defclass node (item) 
+  ((inf :accessor inf :documentation "inferiors, list")
+   (youngest-child :accessor youngest-child :initarg :youngest-child :initform t)
+   (disp-inf :initform nil :initarg :disp-inf :accessor disp-inf :documentation "boolean")))
+
+(defmethod toggle (n) (setf (disp-inf n) (not (disp-inf n))))
+
+;defaults
+(defmethod item-name (n) n)
+;(defmethod inf (n) nil)
+(defmethod c-nodep (n) nil)   ; test if child is node
+(defmethod children (n) nil)
+; when doing all calculationsts with d, there is no need for scaling
+(define-symbol-macro d (STREAM-CHARACTER-WIDTH s #\m))
+
+; GRID
+(defun spc (s) (stream-increment-cursor-position s (* 1.5 d) nil))
+(defun bar% (s) (draw-line* s 0 0 0 d :line-dashes dashed-lines :ink +gray+))  
+(defun bar (s) 
+  (multiple-value-bind (x y) (stream-cursor-position s) (with-translation (s (+ x (* .5 d))  y) (bar% s)))
+  (stream-increment-cursor-position s (* 1.5 d) nil))
+
+(defmethod grid (s i n)
+  (let* ((spaces (initial-space n))
+         (bars (- i spaces))) 
+    ;1) do initial spaces
+    (dotimes (x spaces) (spc s))
+    ;2) do bars
+    (dotimes (x bars) (if grid (bar s) (spc s)))))
+
+; POINTER
+(defun pointr% (s) (draw-lines* s (list 0 (* .3 d) 0 d 0 d (* .7 d) d) :line-dashes dashed-lines :ink +gray+))
+(defun pointr (s)
+  (multiple-value-bind (x y) (stream-cursor-position s)
+    (with-translation (s (+ x (* .5 d)) (+ y (* -.5 d)))
+      (pointr% s))))
+
+; ICONS
+;;;plus - remove visible background pointer
+(defun rect (s) (draw-rectangle* s 0 0 d d :filled nil))
+(defun m (s) (draw-line* s (* d .2) (* d .5) (* d .8) (* d .5)))
+(defun p (s) (m s) (draw-line* s (* d .5) (* d .2) (* d .5) (* d .8)))
+(defun plus (s x y o) (with-translation (s x y) (if o (m s) (p s)) (rect s)))
+
+;;;triangles
+(defun tri-m (s) (draw-polygon* s (list 0 0 d 0 (* .5 d) d) :ink +black+))
+(defun tri-p (s) (draw-polygon* s (list 0 0 d (* .5 d) 0 d)))   ; with rotation !!
+(defun triangle  (s x y o) (with-translation (s x y)          (if o (tri-m s) (tri-p s))))
+(defun triangle2 (s x y o) (with-translation (s x y) (rect s) (if o (tri-m s) (tri-p s))))
 
 (defun draw-icon (s group)
   (with-output-as-presentation (s group 'icon)
     (let ((open-p (disp-inf group)))
       (multiple-value-bind (x y) (stream-cursor-position s)
-        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ (scwm s 20) x) y)))))
+        (funcall icon s x y open-p)))))
 
-(defun spc (s) (stream-increment-cursor-position s (scwm s 20) nil))
-
-(defun bar (s) 
-  (multiple-value-bind (x y) (stream-cursor-position s)
-    (draw-line* s (+ x (scwm s 5)) (- y (scwm s 5)) (+ x (scwm s 5)) (+ y (scwm s 15)) :line-dashes *dashed-lines*) (stream-set-cursor-position s (+ (scwm s 20) x) y)))
-
-(defun lin (s) 
-  (flet ((lin% (s) (draw-lines* s '(0 0 10 0   0 0 0 -10) :line-dashes *dashed-lines*)))
-    (multiple-value-bind (x y) (stream-cursor-position s) 
-      (with-translation (s (+ x (scwm s 5)) (+ y (scwm s 8))) (with-scaling (s (scwm s 1) (scwm s 1.5)) (lin% s))) (stream-set-cursor-position s (+ (scwm s 20) x) y))))
-
-;suppress the line in last child, recursively? <---
-(defun grid (s i n)
-  (cond ((= i 1))
-        ((= i 2) (spc s))
-        (t (if *grid*
-             (progn (spc s) (dotimes (x (- i 2)) (bar s)) (typecase n (node) (t (lin s))))
-             (progn (spc s) (dotimes (x (- i 2)) (spc s)) (typecase n (node) (t (spc s))))))))
-
-;;; ************************************************************
-;;; tree display helper methods
-
-(defclass node () 
-  ((sup :accessor sup :initarg :sup :documentation "superior, name")
-   (inf :accessor inf :documentation "inferiors, list")
-   (disp-inf :initform nil :initarg :disp-inf :accessor disp-inf :documentation "boolean")))
-
-(defmethod toggle (n) (setf (disp-inf n) (not (disp-inf n))))
-(defmethod node-name (n) n)
-(defmethod inf (n) nil)
-(defmethod item-ptype (n default) default)
-(defmethod indentation (n) 1)
-
-(defmethod disp-tree (item pt s indent)
-  "This presents the name of both nodes and leaves"
-  (with-text-size (s (txtsize *application-frame*))  ; geht
-    (typecase item
-      (node (present (node-name item) pt :stream s))
-      (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s)))
-
+; DISPLAY ITEMS
+;nodes
 (defmethod disp-tree :around ((item node) pt s indent)
-  "This displays the icon and the children of a node"
+  "This displays grid, pointer, icon and children of a node-item"
   (with-text-size (s (txtsize *application-frame*))
     (grid s indent item)
+    (pointr s)
     (draw-icon s item)
-    (call-next-method)
+    (call-next-method)  ; <- item-name
     (when (disp-inf item)
-      (let ((i (indentation item))
-            (type (item-ptype item pt)))
         (dolist (child (inf item))
-          (disp-tree child type s (+ indent i)))))))
+          (disp-tree child pt s (1+ indent))))))
 
-;;;************************************************************
-;;; A generic application for viewing a tree
+;leaves
+(defmethod disp-tree :before ((item leaf) pt s indent)
+  "This displays grid and pointer of a leaf-item"
+  (grid s indent item)
+  (pointr s))
+
+;names
+(defmethod disp-tree (item pt s indent)
+  "This presents the item's name"
+  (stream-increment-cursor-position s (* 1.5 d) nil)
+  (present (item-name item) pt :stream s) (terpri s))
+
+; CREATE CHILDREN INSTANCES
+(defmacro inf-meth (&key  ;short keywords
+                       ((:nc node-class) 'node) 
+                       ((:cc children-class) 'string) 
+                       ((:nn item-name-form) '(sup n)) 
+                       ((:ln leaf-name-form) '(sup n)) 
+                       ((:c children-form) '(gethash (sup n) nodes)) 
+                       ((:cp c-node-p-form) '(gethash n nodes)) 
+                       ((:cy childnode-is-youngestsibling-form) 'string=))
+  "Define variants of node and leaf CLASSES and corresponding METHODS to get the childs of a node.
+   All these classes and methods can also be defined, subclassed, etc. in the normal way."
+  (let ((leaf-class (intern (#~s'NODE'LEAF'i (symbol-name node-class)) *package*)))
+    `(progn
+       ;classes
+       (unless (eql ',node-class 'node)
+         (defclass ,node-class (node) ())
+         (defclass ,leaf-class (leaf) ()))
+       ;methods
+       (defmethod item-name ((n ,node-class)) ,item-name-form)
+       (defmethod item-name ((n ,leaf-class)) ,leaf-name-form)
+       (defmethod children ((n ,node-class)) ,children-form)
+       (defmethod c-nodep ((n ,children-class)) ,c-node-p-form) ; the child is a node if it has children
+       (defmethod childnode-is-youngestsibling ((n ,children-class) ch) (and (c-nodep n) (,childnode-is-youngestsibling-form n (car (reverse ch)))))
+       (defmethod inf :before ((n ,node-class))
+         "create children-instances"
+         (unless (slot-boundp n 'inf) 
+           (let ((children (children n))
+                 (sp (initial-space n)))
+             (setf (inf n) (mapcar 
+                             (lambda (x) 
+                               (if (c-nodep x) 
+                                 (if (youngest-child n) ; if this (parent)-node is youngest sibling
+                                   (if (childnode-is-youngestsibling x children)
+                                     (make-instance ',node-class :sup x :initial-space (1+ sp) :youngest-child t)
+                                     (make-instance ',node-class :sup x :initial-space (1+ sp) :youngest-child nil))
+                                   (make-instance ',node-class :sup x :initial-space sp :youngest-child nil))
+                                 (if (youngest-child n)
+                                   (make-instance ',leaf-class :sup x :initial-space (1+ sp))
+                                   (make-instance ',leaf-class :sup x :initial-space sp))))
+                             children))))))))
+
+;************************************************************
+; A generic application for viewing a tree
+;************************************************************
 (define-application-frame tree ()
-  (
-   (txtsize :accessor txtsize :initform :normal)
-   (group :accessor group)
-   (ptype :accessor ptype))
+  ((txtsize :accessor txtsize :initform :normal)
+   (group :accessor group :initarg :group)
+   (ptype :accessor ptype :initarg :ptype))
   (:pane (make-pane 'application-pane :display-function 'display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)))
 
-(defmethod display-tree ((f tree) p) (disp-tree (group f) (ptype f) p (indentation (group f))))
-
-(define-presentation-action toggle (icon command tree) (object window)
-  (toggle object) (redisplay-frame-pane *application-frame* window))
-
-; 4.9.16, pretty-name, ev include other or all keywords for make-application-frame
-(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) pretty-name &allow-other-keys)
-  (let ((f (make-application-frame frame :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
-    (setf (group f) gp (ptype f) pt)
-    (run-frame-top-level f)))
-
-(define-tree-command (txt-size :menu t) ()
-  (setf (txtsize *application-frame*)
-        (menu-choose '(:tiny :very-small :small :smaller :normal :larger :large :very-large :huge))))
-
-;;;************************************************************
-;;; helper functions to put tree nodes with their respective values into a hash-table for faster retreeving
-(defparameter *nodes* (make-hash-table :test #'equal))
-
-(defun t2h (tree)
-  "tree to hash-table, key is a superior, val is a list of inferiors"
-  (mapc (lambda (x)
-          (cond ((and (atom (car x)) (null (cdr x))))
-                (t (setf (gethash (car x) *nodes*) (mapcar #'car (cdr x))) (t2h (cdr x)))))
-        tree))
-
-(defmethod node-name ((n node)) (sup n))
-
-(defmethod inf :around ((n node))
-  (unless (slot-boundp n 'inf) 
-    (setf (inf n) (mapcar (lambda (x) (if (gethash x *nodes*) (make-instance 'node :sup x) x)) (gethash (sup n) *nodes*))))
-  (call-next-method))
-
-;;;************************************************************
-; form http://www.ic.unicamp.br/~meidanis/courses/problemas-lisp/L-99_Ninety-Nine_Lisp_Problems.html
-(defmethod key ((s symbol)) (#~s'-.*''(symbol-name s)))
-;(defmethod key ((s string)) (#~s'-.*'' s))
-
-(defun pega (l)
-  (cond ((null l) nil)
-        ((null (cdr l)) l)
-        ((equal (key (car l)) (key (cadr l))) (cons (car l) (pega (cdr l))))
-        (t (list (car l)))))
-(defun tira (l)
-  (cond ((null l) nil)
-        ((null (cdr l)) nil)
-        ((equal (key (car l)) (key (cadr l))) (tira (cdr l)))
-        (t (cdr l))))
-(defun pack (l) (if (null l) nil (cons (pega l) (pack (tira l)))))
-
-
-
-#|
-;;;;;;;;;;;;;;;;;;;;;;;;;
-@END
-
-(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) &allow-other-keys)
-  (let ((f (make-application-frame frame :left left :top top :right right :bottom bottom)))
-    (setf (group f) gp (ptype f) pt)
-    (run-frame-top-level f)))
-
-;für pretty name, geht 4.9.16
-(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) pretty-name &allow-other-keys)
-  (let ((f (make-application-frame frame :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
-    (setf (group f) gp (ptype f) pt)
-    (run-frame-top-level f)))
+(defmethod display-tree ((f tree) p) (disp-tree (group f) (ptype f) p 0))
+(define-presentation-action toggle (icon command tree) (object window) (toggle object) (redisplay-frame-pane *application-frame* window))
+(define-tree-command (txt-size :menu t) () (setf (txtsize *application-frame*) textsize))
 
 (defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) pretty-name &allow-other-keys)
-  (let ((f (make-application-frame frame :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
-    (setf (group f) gp (ptype f) pt)
-    (run-frame-top-level f)))
+    (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
 
+;************************************************************
+; some often used functions
+;************************************************************
+; 1) *** VIEW DIRECTORY - from http://osdir.com/ml/mcclim-devel/2009-08/msg00010.html
+(inf-meth 
+  :nc node-fs
+  :cc pathname
+  :cy path:=
+  :nn (let ((lst (pathname-directory (sup n)))) (when (consp lst) (car (last lst))))
+  :ln (file-namestring (sup n))
+  :c  (fad:list-directory (sup n))
+  :cp (path:-d n))
 
-; with keystroke
-#;(define-tree-command (txt-size :menu t :keystroke (#\+ :control)) ()
-                        (setf (txtsize *application-frame*)
-                                      (menu-choose '(:tiny :very-small :small :smaller :normal :larger :large :very-large :huge))))
+(defun list-dir (d) ;initial key
+  (tree-view (make-instance 'node-fs 
+                            :sup (path:dirname d) 
+                            :disp-inf t) 
+             'string))
 
+;-----------------
+; 2) *** VIEW A STRING- or SYMBOL-TREE of this form (using a hash-table)
+; '(("node1"            ; '((node1 
+;    ("node11"          ;    (node11 
+;     ("leaf111")       ;     (leaf111)
+;     ("leaf112"))))    ;     (leaf112))))
 
-#|
-;;;;;;;;;;;;;;;;;;;,
-(defmethod disp-tree (item pt s indent)
-  "This presents the name of both nodes and leaves"
-  (with-scaling (s 2)
-  (with-slots (txtsize) *application-frame*
-    (with-text-size (s txtsize)
-    (typecase item
-      (node (present (node-name item) pt :stream s))
-      (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s)))))
+; -1- string-items
+(inf-meth)
 
-(defmethod disp-tree :around ((item node) pt s indent)
-  "This displays the icon and the children of a node"
-  (with-scaling (s 2)
+(defun treeview-strings (tree key) ;initial key
+  (t2h tree)  ; 1) create hash-table
+  (tree-view (make-instance 'node :sup key :disp-inf t) 'string))
 
-  (with-slots (txtsize) *application-frame*
-    (with-text-size (s txtsize)
-    (grid s indent item)
-    (draw-icon s item)
-    (call-next-method)
-    (when (disp-inf item)
-      (let ((i (indentation item))
-            (type (item-ptype item pt)))
-        (dolist (child (inf item))
-          (disp-tree child type s (+ indent i)))))))))
-;;;;
-(defmethod disp-tree (item pt s indent)
-  "This presents the name of both nodes and leaves"
-  (with-drawing-options (s :textstyle :transformation )
-  (with-slots (txtsize) *application-frame*
-    (with-text-size (s txtsize)
-    (typecase item
-      (node (present (node-name item) pt :stream s))
-      (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s)))))
+;run (cw:treeview-strings cw-examples::stgtree "icd")
 
-(defmethod disp-tree :around ((item node) pt s indent)
-  "This displays the icon and the children of a node"
-  (with-scaling (s 2)
+; -1- symbol-items --- converts symbols to strings
+(inf-meth
+  :nc node-z)
 
-  (with-slots (txtsize) *application-frame*
-    (with-text-size (s txtsize)
-    (grid s indent item)
-    (draw-icon s item)
-    (call-next-method)
-    (when (disp-inf item)
-      (let ((i (indentation item))
-            (type (item-ptype item pt)))
-        (dolist (child (inf item))
-          (disp-tree child type s (+ indent i)))))))))
-|#
+(defun treeview-symbols (tree key)
+  (t2h (sym2stg tree))
+  (tree-view (make-instance 'node-z :sup (string-downcase (symbol-name key)) :disp-inf t) 'string))
 
-
-;--------
-(stream-line-height s)
-
-(stream-character-width s #\m)
-
-;--------
-
-
-;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (m% s) (p s)))))
-;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s 2) (rect s) (if o (m% s) (p s)))))
-;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s (stream-line-height s --textstyle---)) (rect s) (if o (m% s) (p s)))))
-
-;geht
-;(defun plus (s x y o) (with-translation (s x y) (with-scaling (s (/ (stream-line-height s) 20)) (rect s) (if o (m% s) (p s))))) ;geht fast gut
-;
-
-;(defun triangle  (s x y o) (with-translation (s x y) (with-scaling (s 1)          (if o (tri-m s) (tri-p s)))))
-
-;(defun triangle2 (s x y o) (with-translation (s x y) (with-scaling (s 1) (rect s) (if o (tri-m s) (tri-p s)))))
-
-
-;advance cursor,, was 20
-;(o:p ac (* 2 (stream-character-width s #\o)))
-;(define-symbol-macro ac (stream-character-width 's #\m))
-;geht
-;(defmacro ac (s) `(stream-character-width ,s #\m)) ; ;advance cursor,, was 20
-
-
-
-;        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ 20 x) y)))))
-
-;        (funcall *icon* s x y open-p) (stream-set-cursor-position s (+ (ac s) x) y)))))
-
-
-;    (draw-line* s (+ x 5) (- y 5) (+ x 5) (+ y 15) :line-dashes *dashed-lines*) (stream-set-cursor-position s (+ (ac s) x) y)))      ; use line or text hight   <---
-
-;    (draw-line* s (+ x 5) (- y 5) (+ x 5) (+ y 15) :line-dashes *dashed-lines*) (stream-set-cursor-position s (+ (scwm s 20) x) y)))      ; use line or text hight   <---
-      ; use line or text hight   <---
-;      (with-translation (s (+ x 5) (+ y 8)) (with-scaling (s 1 1.5) (lin% s))) (stream-set-cursor-position s (+ (ac s) x) y))))
-
-;      (with-translation (s (+ x 5) (+ y 8)) (with-scaling (s 1 1.5) (lin% s))) (stream-set-cursor-position s (+ (scwm s 20) x) y))))
-
-
-;(defun spc (s) (stream-increment-cursor-position s (ac s) nil))
-#|
-#;(defmethod disp-tree (item pt s indent)
-  "This presents the name of both nodes and leaves"
-  (with-slots (txtsize) *application-frame*
-    (with-text-size (s txtsize)
-      (typecase item
-        (node (present (node-name item) pt :stream s))
-        (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s))))
-
-#;(defmethod disp-tree :around ((item node) pt s indent)
-  "This displays the icon and the children of a node"
-  (with-slots (txtsize) *application-frame*
-    (with-text-size (s txtsize)
-      (grid s indent item)
-      (draw-icon s item)
-      (call-next-method)
-      (when (disp-inf item)
-        (let ((i (indentation item))
-              (type (item-ptype item pt)))
-          (dolist (child (inf item))
-            (disp-tree child type s (+ indent i))))))))
-|#
-
-(defmethod disp-tree (item pt s indent)
-  "This presents the name of both nodes and leaves"
-;  (with-slots (txtsize) *application-frame*    ; geht
-;    (with-text-size (s (slot-value *application-frame* 'txtsize))  ; geht
-    (with-text-size (s (txtsize *application-frame*))  ; geht
-      (typecase item
-        (node (present (node-name item) pt :stream s))
-        (t (grid s indent item) (present (node-name item) pt :stream s))) (terpri s)))
-;)
-
-(defmethod disp-tree :around ((item node) pt s indent)
-  "This displays the icon and the children of a node"
-;  (with-slots (txtsize) *application-frame*
-;    (with-text-size (s txtsize)
-     (with-text-size (s (txtsize *application-frame*))
-      (grid s indent item)
-      (draw-icon s item)
-      (call-next-method)
-      (when (disp-inf item)
-        (let ((i (indentation item))
-              (type (item-ptype item pt)))
-          (dolist (child (inf item))
-            (disp-tree child type s (+ indent i)))))))
-;)
-
-
-|#
+;run (cw:treeview-symbols cw-examples::symtree 'icd)
+;------------------------------------------------------
