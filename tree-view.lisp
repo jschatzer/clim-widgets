@@ -13,7 +13,7 @@
 (in-package cw-treeview)
 
 ;************************************************************
-; icons and grid
+; 1) ICONS AND GRID
 ;************************************************************
 (defvar icon 'plus)     ; 'triangle 'triangle2
 (defvar grid t)         ; nil
@@ -23,24 +23,8 @@
 (define-presentation-method highlight-presentation ((type icon) r s st) :unhighlight)
 (define-presentation-method present (o (type icon) s v &key) (disp-tree o ptype s (indentation o)))
 
-(defclass item ()
-  ((sup :accessor sup :initarg :sup)  ; ev name
-   (initial-space :accessor initial-space :initarg :initial-space :initform 0)))
-
-(defclass leaf (item) ())  ; leaf shall/may not be a superclass of node 
-
-(defclass node (item) 
-  ((inf :accessor inf :documentation "inferiors, list")
-   (youngest-child :accessor youngest-child :initarg :youngest-child :initform t)
-   (disp-inf :initform nil :initarg :disp-inf :accessor disp-inf :documentation "boolean")))
-
 (defmethod toggle (n) (setf (disp-inf n) (not (disp-inf n))))
 
-;defaults
-(defmethod item-name (n) n)
-;(defmethod inf (n) nil)
-(defmethod c-nodep (n) nil)   ; test if child is node
-(defmethod children (n) nil)
 ; when doing all calculationsts with d, there is no need for scaling
 (define-symbol-macro d (STREAM-CHARACTER-WIDTH s #\m))
 
@@ -64,7 +48,8 @@
 (defun pointr (s)
   (multiple-value-bind (x y) (stream-cursor-position s)
     (with-translation (s (+ x (* .5 d)) (+ y (* -.5 d)))
-      (pointr% s))))
+;      (pointr% s))))
+      (when grid (pointr% s))))) ; to suppress pointer
 
 ; ICONS
 ;;;plus - remove visible background pointer
@@ -85,7 +70,77 @@
       (multiple-value-bind (x y) (stream-cursor-position s)
         (funcall icon s x y open-p)))))
 
-; DISPLAY ITEMS
+;************************************************************
+; 2) CREATE CHILDREN INSTANCES
+;************************************************************
+(defclass item ()
+  ((sup :accessor sup :initarg :sup)  ; ev name
+   (initial-space :accessor initial-space :initarg :initial-space :initform 0)))
+
+(defclass leaf (item) ())  ; leaf shall/may not be a superclass of node 
+
+(defclass node (item) 
+  ((inf :accessor inf :documentation "inferiors, list")
+   (youngest-child :accessor youngest-child :initarg :youngest-child :initform t)
+   (disp-inf :initform nil :initarg :disp-inf :accessor disp-inf :documentation "boolean")))
+
+(defmethod item-name (n) n)
+;(defmethod inf (n) nil)
+(defmethod c-nodep (n) nil)   ; test if child is node
+(defmethod children (n) nil)
+
+(defmacro inf-meth (&key  ;short keywords
+                     ((:nc node-class) 'node) 
+                     ((:cc children-class) 'string) 
+                     ((:nn item-name-form) '(sup n)) 
+                     ((:ln leaf-name-form) '(sup n)) 
+                     ((:c children-form) '(gethash (sup n) nodes)) 
+                     ((:cp c-node-p-form) '(gethash n nodes)) 
+                     ((:cy childnode-is-youngestsibling-form) 'string=))
+  "Define variants of node and leaf CLASSES and corresponding METHODS to get the childs of a node.
+   All these classes and methods can also be defined, subclassed, etc. in the normal way.
+   Keyword arguments:
+   :nc node class
+   :cc children class
+   :nn node name
+   :ln leaf name
+   :c  supply a form that returns a list of a node's children
+   :cp supply a form to test if a child is node or leaf
+   :cy supply a function to test for equality o child nodes
+   See view directory for an example usage"
+   (let ((leaf-class (intern (#~s'NODE'LEAF'i (symbol-name node-class)) *package*)))
+     `(progn
+        ;classes
+        (unless (eql ',node-class 'node)
+          (defclass ,node-class (node) ())
+          (defclass ,leaf-class (leaf) ()))
+        ;methods
+        (defmethod item-name ((n ,node-class)) ,item-name-form)
+        (defmethod item-name ((n ,leaf-class)) ,leaf-name-form)
+        (defmethod children ((n ,node-class)) ,children-form)
+        (defmethod c-nodep ((n ,children-class)) ,c-node-p-form) ; the child is a node if it has children
+        (defmethod childnode-is-youngestsibling ((n ,children-class) ch) (and (c-nodep n) (,childnode-is-youngestsibling-form n (car (last ch)))))
+        (defmethod inf :before ((n ,node-class))
+          "create children-instances"
+          (unless (slot-boundp n 'inf) 
+            (let ((children (children n))
+                  (sp (initial-space n)))
+              (setf (inf n) (mapcar 
+                              (lambda (x) 
+                                (if (c-nodep x) 
+                                  (if (youngest-child n) ; if this (parent)-node is youngest sibling
+                                    (if (childnode-is-youngestsibling x children)
+                                      (make-instance ',node-class :sup x :initial-space (1+ sp) :youngest-child t)
+                                      (make-instance ',node-class :sup x :initial-space (1+ sp) :youngest-child nil))
+                                    (make-instance ',node-class :sup x :initial-space sp :youngest-child nil))
+                                  (if (youngest-child n)
+                                    (make-instance ',leaf-class :sup x :initial-space (1+ sp))
+                                    (make-instance ',leaf-class :sup x :initial-space sp))))
+                              children))))))))
+
+;************************************************************
+; 3) DISPLAY ITEMS
+;************************************************************
 ;nodes
 (defmethod disp-tree :around ((item node) pt s indent)
   "This displays grid, pointer, icon and children of a node-item"
@@ -110,49 +165,8 @@
   (stream-increment-cursor-position s (* 1.5 d) nil)
   (present (item-name item) pt :stream s) (terpri s))
 
-; CREATE CHILDREN INSTANCES
-(defmacro inf-meth (&key  ;short keywords
-                       ((:nc node-class) 'node) 
-                       ((:cc children-class) 'string) 
-                       ((:nn item-name-form) '(sup n)) 
-                       ((:ln leaf-name-form) '(sup n)) 
-                       ((:c children-form) '(gethash (sup n) nodes)) 
-                       ((:cp c-node-p-form) '(gethash n nodes)) 
-                       ((:cy childnode-is-youngestsibling-form) 'string=))
-  "Define variants of node and leaf CLASSES and corresponding METHODS to get the childs of a node.
-   All these classes and methods can also be defined, subclassed, etc. in the normal way."
-  (let ((leaf-class (intern (#~s'NODE'LEAF'i (symbol-name node-class)) *package*)))
-    `(progn
-       ;classes
-       (unless (eql ',node-class 'node)
-         (defclass ,node-class (node) ())
-         (defclass ,leaf-class (leaf) ()))
-       ;methods
-       (defmethod item-name ((n ,node-class)) ,item-name-form)
-       (defmethod item-name ((n ,leaf-class)) ,leaf-name-form)
-       (defmethod children ((n ,node-class)) ,children-form)
-       (defmethod c-nodep ((n ,children-class)) ,c-node-p-form) ; the child is a node if it has children
-       (defmethod childnode-is-youngestsibling ((n ,children-class) ch) (and (c-nodep n) (,childnode-is-youngestsibling-form n (car (reverse ch)))))
-       (defmethod inf :before ((n ,node-class))
-         "create children-instances"
-         (unless (slot-boundp n 'inf) 
-           (let ((children (children n))
-                 (sp (initial-space n)))
-             (setf (inf n) (mapcar 
-                             (lambda (x) 
-                               (if (c-nodep x) 
-                                 (if (youngest-child n) ; if this (parent)-node is youngest sibling
-                                   (if (childnode-is-youngestsibling x children)
-                                     (make-instance ',node-class :sup x :initial-space (1+ sp) :youngest-child t)
-                                     (make-instance ',node-class :sup x :initial-space (1+ sp) :youngest-child nil))
-                                   (make-instance ',node-class :sup x :initial-space sp :youngest-child nil))
-                                 (if (youngest-child n)
-                                   (make-instance ',leaf-class :sup x :initial-space (1+ sp))
-                                   (make-instance ',leaf-class :sup x :initial-space sp))))
-                             children))))))))
-
 ;************************************************************
-; A generic application for viewing a tree
+; 4) A GENERIC APPLICATION FOR VIEWING A TREE
 ;************************************************************
 (define-application-frame tree ()
   ((txtsize :accessor txtsize :initform :normal)
@@ -168,7 +182,7 @@
     (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
 
 ;************************************************************
-; some often used functions
+; 5) SOME FUNCTIONS FOR SIMPLE CASES
 ;************************************************************
 ; 1) *** VIEW DIRECTORY - from http://osdir.com/ml/mcclim-devel/2009-08/msg00010.html
 (inf-meth 
