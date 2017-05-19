@@ -14,6 +14,104 @@
                 (t (setf (gethash (car x) nodes) (mapcar #'car (cdr x))) (t2h (cdr x)))))
         tree))
 
+#|
+* (clim-pkg-doc::pkg-tree :cl-fad)
+
+  (("CL-FAD"
+    ("function:" 
+     ("canonical-pathname") 
+     ("copy-" 
+      ("copy-file") 
+      ("copy-stream")) 
+     ("delete-directory-and-files")
+     ("directory-" 
+      ("directory-exists-p") 
+      ("directory-pathname-p")) 
+     ("file-exists-p") ("list-directory")
+     ("merge-" 
+      ("merge-pathnames-as-directory") 
+      ("merge-pathnames-as-file")) 
+     ("open-temporary")
+     ("pathname-" 
+      ("pathname-absolute-p") 
+      ("pathname-as-directory") 
+      ("pathname-as-file") 
+      ("pathname-directory-pathname") 
+      ("pathname-equal")
+      ("pathname-parent-directory") 
+      ("pathname-relative-p") 
+      ("pathname-root-p"))
+     ("walk-directory"))
+     ("macro:" 
+      ("with-" ("with-open-temporary-file") ("with-output-to-temporary-file"))) 
+     ("variable:" ("*default-template*"))
+     ("condition:" ("cannot-create-temporary-file") ("invalid-temporary-pathname-template"))))
+     * 
+|#
+
+
+;-------------------------------------------------------------------------
+
+(defun t2h-r (l)
+  "insert into an emtpy ht"
+  (clrhash nodes)
+  (t2h-r%  l))
+
+
+#|
+;scheint richtig zu gehen, 21.4.2017
+(defun t2h-r (l)     ;t2h recursive
+  (cond ((null l) nil)
+        ((listp l) (setf (gethash (car l) nodes) 
+                         (mapcar (lambda (x) (if (listp x) (car x) x)) (cdr l))) 
+                   (mapcar 't2h-r (cdr l)))))
+|#
+
+(defun t2h-r% (l)     ;t2h recursive
+  (cond ((null l) nil)
+        ((listp l) (setf (gethash (car l) nodes) 
+                         (mapcar (lambda (x) (if (listp x) (car x) x)) (cdr l))) 
+                   (mapcar 't2h-r% (cdr l)))))
+
+#|
+;* (new-pd::pkg-tree :cl-fad)
+
+(o:p l 
+ '("CL-FAD"
+   ("function:-" 
+    "function:-canonical-pathname" 
+    ("function:-copy-" 
+     "function:-copy-stream" 
+     "function:-copy-file") 
+    "function:-delete-directory-and-files"
+    ("function:-directory-" 
+     "function:-directory-pathname-p" 
+     "function:-directory-exists-p") 
+    "function:-file-exists-p" 
+    "function:-list-directory"
+    ("function:-merge-" 
+     "function:-merge-pathnames-as-directory" 
+     "function:-merge-pathnames-as-file") 
+    "function:-open-temporary"
+    ("function:-pathname-" 
+     "function:-pathname-root-p" 
+     "function:-pathname-relative-p" 
+     "function:-pathname-parent-directory" 
+     "function:-pathname-equal"
+     "function:-pathname-directory-pathname" 
+     ("function:-pathname-as-" 
+      "function:-pathname-as-directory" 
+      "function:-pathname-as-file")
+     "function:-pathname-absolute-p")
+    "function:-walk-directory")
+    ("macro:-" 
+     "macro:-with-output-to-temporary-file" 
+     "macro:-with-open-temporary-file") 
+    ("variable:-" "variable:-*default-template*")
+    ("condition:-" "condition:-cannot-create-temporary-file" "condition:-invalid-temporary-pathname-template")))
+|#
+
+
 ;;;************************************************************
 ; form http://www.ic.unicamp.br/~meidanis/courses/problemas-lisp/L-99_Ninety-Nine_Lisp_Problems.html
 (defmethod key ((s symbol)) (#~s'-.*''(symbol-name s)))
