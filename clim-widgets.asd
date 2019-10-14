@@ -21,5 +21,6 @@
    (:file "clock")
    (:file "tree-view")
    (:file "cw-examples")
-   (:file "cw-test")))
+;   (:file "cw-test")
+   ))
 

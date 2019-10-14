@@ -178,8 +178,26 @@
 (define-presentation-action toggle (icon command tree) (object window) (toggle object) (redisplay-frame-pane *application-frame* window))
 (define-tree-command (txt-size :menu t) () (setf (txtsize *application-frame*) textsize))
 
+#|
 (defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) pretty-name &allow-other-keys)
     (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
+
+;;; siehe zuBehalten QQQQ
+;; oben bug pretty name without default !!! ev use gp or pt ?? statt empty string, 27.8.2019
+;; + problem optional + key !!??
+;; pt ~ frame ?? remove one ??
+(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) (pretty-name "") &allow-other-keys)
+    (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
+
+;; 11.10.19 only keys
+(defun tree-view (gp pt &key (frame 'tree) (left 0) (top 0) (right 400) (bottom 400) (pretty-name "") &allow-other-keys)
+    (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
+|#
+
+;; 14.10.19
+(defun tree-view (group &optional (frame 'tree) (ptype 'string) &key &allow-other-keys)
+    (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left 0 :top 0 :right 400 :bottom 400)))
+
 
 ;************************************************************
 ; 5) SOME FUNCTIONS FOR SIMPLE CASES
@@ -194,11 +212,42 @@
   :c  (fad:list-directory (sup n))
   :cp (path:-d n))
 
+;(defun list-dir (d) ;initial key
+;  (tree-view (make-instance 'node-fs 
+;                            :sup (path:dirname d) 
+;                            :disp-inf t) 
+;             'string))
+;
 (defun list-dir (d) ;initial key
   (tree-view (make-instance 'node-fs 
                             :sup (path:dirname d) 
-                            :disp-inf t) 
-             'string))
+                            :disp-inf t)))
+
+
+#|
+;========================================
+;---- with uiop
+(inf-meth 
+  :nc node-fs
+  :cc pathname
+;  :cy path:=
+  :cy uiop:pathname-equal
+  :nn (let ((lst (pathname-directory (sup n)))) (when (consp lst) (car (last lst))))
+  :ln (file-namestring (sup n))
+;  :c  (fad:list-directory (sup n))
+;  :c  (uiop:directory* (sup n))
+;  :c  (uiop:directory-files (sup n))
+  :c  (format t "~s*" (uiop:directory* (sup n)))
+;  :cp (path:-d n))
+  :cp (uiop:directory-exists-p n))
+
+(defun list-dir (d) ;initial key
+  (tree-view (make-instance 'node-fs 
+;                            :sup (path:dirname d) 
+                            :sup d 
+                            :disp-inf t)))
+=======================================================
+|#
 
 ;-----------------
 ; 2) *** VIEW A STRING- or SYMBOL-TREE of this form (using a hash-table)
@@ -210,19 +259,34 @@
 ; -1- string-items
 (inf-meth)
 
-(defun treeview-strings (tree key) ;initial key
-  (t2h tree)  ; 1) create hash-table
-  (tree-view (make-instance 'node :sup key :disp-inf t) 'string))
+;  (defun treeview-strings (tree key) ;initial key
+;    (t2h tree)  ; 1) create hash-table
+;    (tree-view (make-instance 'node :sup key :disp-inf t) 'string))            ;; so gehts 9.10.2019
+;  ;  (tree-view (make-instance 'node :sup key :disp-inf t) 'string 'string ))
 
-;run (cw:treeview-strings cw-examples::stgtree "icd")
+;geht
+;(defun treeview-strings (tree key) ;initial key
+;  (t2h tree)  ; 1) create hash-table
+;  (tree-view (make-instance 'node :sup key :disp-inf t)))
+
+;(defun treeview-strings (tree &optional (key (caar tree)))
+
+(defun treeview (tree &optional (key (caar tree)))
+  "view a tree"  ; of stringitems  <--??
+  (t2h tree)  ; 1) create hash-table
+  (tree-view (make-instance 'node :sup key :disp-inf t)))
+
+
+;(cw:treeview-strings cw-examples::stgtree)
 
 ; -1- symbol-items --- converts symbols to strings
-(inf-meth
-  :nc node-z)
-
-(defun treeview-symbols (tree key)
-  (t2h (sym2stg tree))
-  (tree-view (make-instance 'node-z :sup (string-downcase (symbol-name key)) :disp-inf t) 'string))
-
-;run (cw:treeview-symbols cw-examples::symtree 'icd)
-;------------------------------------------------------
+;  (inf-meth
+;    :nc node-z)
+;  
+;  (defun treeview-symbols (tree key)
+;    (t2h (sym2stg tree))
+;    (tree-view (make-instance 'node-z :sup (string-downcase (symbol-name key)) :disp-inf t) 'string))
+;  ;  (tree-view (make-instance 'node-z :sup (string-downcase (symbol-name key)) :disp-inf t) 'string 'string))
+;  
+;  ;run (cw:treeview-symbols cw-examples::symtree 'icd)
+;  ;------------------------------------------------------

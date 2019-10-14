@@ -67,11 +67,33 @@
                    (mapcar 't2h-r (cdr l)))))
 |#
 
+
+; ;;; das bis 25.4.19
+; (defun t2h-r% (l)     ;t2h recursive
+;   (cond ((null l) nil)
+;         ((listp l) (setf (gethash (car l) nodes) (mapcar (lambda (x) (if (listp x) (car x) x)) (cdr l))) 
+;                    (mapcar 't2h-r% (cdr l)))))
+; ;;;;
+
+;25.4.19
+;mit mapc
 (defun t2h-r% (l)     ;t2h recursive
   (cond ((null l) nil)
-        ((listp l) (setf (gethash (car l) nodes) 
-                         (mapcar (lambda (x) (if (listp x) (car x) x)) (cdr l))) 
-                   (mapcar 't2h-r% (cdr l)))))
+        ((listp l) (setf (gethash (car l) nodes) (mapcar (lambda (x) (if (listp x) (car x) x)) (cdr l))) 
+                   (mapc 't2h-r% (cdr l)))))
+
+
+#|
+;;error the value "CLIM" is not of type list
+;form oben (defun t2h (tree)
+(defun t2h-r% (l) 
+  "tree to hash-table, key is a superior, val is a list of inferiors"
+  (mapc (lambda (x)
+          (cond ((and (atom (car x)) (null (cdr x))))
+                (t (setf (gethash (car x) nodes) (mapcar #'car (cdr x))) (t2h-r% (cdr x)))))
+        l))
+|#
+
 
 #|
 ;* (new-pd::pkg-tree :cl-fad)
@@ -114,7 +136,8 @@
 
 ;;;************************************************************
 ; form http://www.ic.unicamp.br/~meidanis/courses/problemas-lisp/L-99_Ninety-Nine_Lisp_Problems.html
-(defmethod key ((s symbol)) (#~s'-.*''(symbol-name s)))
+;(defmethod key ((s symbol)) (#~s'-.*''(symbol-name s)))
+(defmethod key ((s symbol)) (lol:symb (#~s'-.*''(symbol-name s))))
 (defmethod key ((s string)) (#~s'-.*'' s))
 
 (defun pega (l)
@@ -134,11 +157,98 @@
 ;  (NSORT:NSTRING<=) (NSORT:NSTRING>) (NSORT:NSTRING>=))
 ; (:MACRO (NSORT::DEFNSF)))
 
+#|
+;;orig, do not remove !! before testing cw:tests <------
+;(cw:sym2stg '(a b nil t)) ; ("a" "b" NIL "t")
 (defun sym2stg (lst)
   "transform a symbol-tree into a string-tree"
   (cond ((null lst) nil)
         ((atom lst) (string-downcase (if (stringp lst) lst (symbol-name lst))))
         (t (cons (sym2stg (car lst)) (sym2stg (cdr lst))))))
+|#
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+#|
+;gehen alle richtig,  what about this: ;((:FUNCTION ("NSTRING" (NSORT ???
+(r-sym2stg '(a (nil c)))
+
+(r-sym2stg '(a (b)))
+
+(r-sym2stg '(a b nil t)) ; ("a" "b" NIL "t")
+
+(r-sym2stg '(a b))
+|#
+
+;13.10.18 scheint gut zu gehen
+;test, ev rename  r- for recursive
+;(defun r-sym2stg (l)
+(defun sym2stg (l)
+  "transform a symbol-tree into a string-tree"
+  (mapcar (lambda (x) 
+            (cond ((atom x) (string-downcase (symbol-name x)))
+                  ((notany 'consp x) (mapcar 'string-downcase (mapcar 'symbol-name x)))
+                  (t (mapcar 'r-sym2stg x))))      ; das hatte ich bis 24.4.19 trotz dieses typw r-.. - pkg-doc ging damit gut!!!! <-----
+          l))
+
+(defun sym2stg (l)
+  "transform a symbol-tree into a string-tree"
+  (mapcar (lambda (x) 
+            (cond ((atom x) (string-downcase (symbol-name x)))
+                  ((notany 'consp x) (mapcar 'string-downcase (mapcar 'symbol-name x)))
+                  (t (mapcar 'sym2stg x))))
+          l))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 24.4.2019
+;("a" ("b" "nil" "d" "t") "c")
+;(o:rmapcar (h:compose 'string-downcase 'h:stg)  '(a (b nil d t) c))
+;(rmapcar (h:compose 'string-downcase 'stg)  '(a (b nil d t) c))
+
+;from onlisp
+(defun rmapcar (fn &rest args)
+ (if (some #'atom args)
+   (apply fn args)
+   (apply #'mapcar (lambda (&rest args) (apply #'rmapcar fn args)) args)))
+
+; hh --  use lol:str  <---
+(defun stg (sym)
+  (with-output-to-string (s) (princ sym s)))
+
+(defun sym2stg (l)
+  "transform a symbol-tree into a string-tree"
+  (rmapcar (h:compose 'string-downcase 'stg) l))
+
+(defun sym2stg (l)
+  "transform a symbol-tree into a downcase string-tree"
+  (rmapcar (h:compose 'string-downcase 'symbol-name) l))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+
+#|
+;may be ok, because there are only single element lists?
+;(cw:sym2stg '(a b)) -> ("a" "b" . "nil")  should be: ("a" "b")
+; ("a" "b" "nil" "t" . "nil")
+(defun sym2stg (lst)
+  "transform a symbol-tree into a string-tree"
+;  (cond ((null lst) nil)
+  (cond ((null lst) "nil")
+        ((atom lst) (string-downcase (if (stringp lst) lst (symbol-name lst))))
+        (t (cons (sym2stg (car lst)) (sym2stg (cdr lst))))))
+
+;(cw:sym2stg '(a b nil t)) ; ("a" "b" NIL "t")   should be ("a" "b" "nil" "t")
+(defun sym2stg (lst)
+  "transform a symbol-tree into a string-tree"
+  (cond ((null lst) "nil")
+        ;((atom lst) (string-downcase (if (stringp lst) lst (symbol-name lst))))
+        ((atom lst) (string-downcase (prin1 lst)))
+        (t (cons (sym2stg (car lst)) (sym2stg (cdr lst))))))
+|#
+
 
 ;;;************************************************************
 ; :smaller :larger don't work for now

@@ -11,7 +11,7 @@ in the current package but only makes them accessible by inheritance.|#
   (:use clim clim-lisp)
   (:export 
     textsize
-    t2h nodes
+    t2h nodes    t2h-r
     pack key
     sym2stg))
 
@@ -26,7 +26,7 @@ in the current package but only makes them accessible by inheritance.|#
 (defpackage cw-treeview 
   (:use clim clim-lisp cw-utils)
   (:export
-    list-dir treeview-strings treeview-symbols
+    list-dir treeview ; treeview-strings treeview-symbols 
     item-name sup
     children c-nodep childnode-is-youngestsibling
     tree node leaf  ; classes
@@ -36,13 +36,13 @@ in the current package but only makes them accessible by inheritance.|#
 (defpackage clim-widgets
   (:nicknames cw)
   (:use clim clim-lisp cw-utils cw-calendar cw-clock cw-treeview)
-  (:export 
+  (:export  t2h-r
     calendar 
     clock digital-clock-eu
     ;---------------------------------
     ;tree-view  -- export test -- names may change
     ;---------------------------------
-    list-dir treeview-strings treeview-symbols
+    list-dir treeview ;treeview-strings treeview-symbols
     item-name sup  ; sup ev remove?
     children c-nodep childnode-is-youngestsibling
     tree node leaf  ; classes
@@ -51,4 +51,4 @@ in the current package but only makes them accessible by inheritance.|#
     t2h nodes sym2stg key pack textsize))
 
 (defpackage cw-examples (:use clim clim-lisp clim-widgets))
-(defpackage cw-test (:use clim clim-lisp clim-widgets))
+;(defpackage cw-test (:use clim clim-lisp clim-widgets))

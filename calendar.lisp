@@ -17,10 +17,12 @@
     (- (local-time:days-in-month (1- m) y)
        (nth-value 6 (decode-universal-time (encode-universal-time 0 0 0 1 m y))))))
 
+;There is no applicable method for the generic function #<STANDARD-GENERIC-FUNCTION CLIM-BACKEND:FONT-GLYPH-DX (1)> when called with arguments (#<XLIB:FONT -adobe-courier-medium-r-normal--14-100-100-100-m-90-iso8859-1 :0 16777241>
 (defmacro disp-day-nr ()
   `(formatting-cell (p :align-x :right)
     (cond ((dt:date= (dt:today) (dt:day+ (start month year) i)) (with-text-face (p :bold) (present (dt:day+ (start month year) i) 'date :stream p)))
           ((/= month (dt:month-of (dt:day+ (start month year) i))) (with-drawing-options (p :ink +gray+ :text-style (make-text-style nil :italic :smaller)) (present (dt:day+ (start month year) i) 'date :stream p)))
+;          ((/= month (dt:month-of (dt:day+ (start month year) i))) (with-drawing-options (p :ink +gray+ :text-style (make-text-style nil :italic :tiny)) (present (dt:day+ (start month year) i) 'date :stream p)))
           (t (present (dt:day+ (start month year) i) 'date :stream p)))))
 
 (defmacro disp-fn (rc)
@@ -33,8 +35,20 @@
        (,rc (p) (dolist (d days) (formatting-cell (p) (princ d p))))
        (let ((i 0)) (dotimes (w 6) (,rc (p) (dotimes (d 7) (disp-day-nr) (incf i))))))))
 
+#|
+;24.4.2019
+;error: Invalid initialization argument: :BORDERS in call for class #<STANDARD-CLASS CLIM-CLX::CLX-856-APPLICATION-PA
 (defmacro mp (d-fn)
-  `(make-pane 'application-pane :width :compute :height :compute :borders nil :scroll-bars nil :text-style '(:fix nil nil) :display-function ',d-fn :incremental-redisplay nil))
+;  `(make-pane 'application-pane :width :compute :height :compute :borders nil :scroll-bars nil :text-style '(:fix nil nil) :display-function ',d-fn :incremental-redisplay nil))
+;test
+;  `(make-pane 'application-pane :width :compute :height :compute :scroll-bars nil :text-style '(:fix nil nil) :display-function ',d-fn :incremental-redisplay nil))
+
+  `(make-pane 'application-pane :width :compute :height :compute :scroll-bars nil :display-function ',d-fn :incremental-redisplay nil))   ; so geht
+;  `(make-pane 'application-pane :width :compute :height :compute :borders nil :scroll-bars nil :display-function ',d-fn :incremental-redisplay nil)) ;geht nicht
+|#
+
+(defmacro mp (d-fn)
+  `(make-pane 'application-pane :width :compute :height :compute :scroll-bars nil :display-function ',d-fn :incremental-redisplay nil))
 ;--------------------------------------
 ; present-types
 ;--------------------------------------
