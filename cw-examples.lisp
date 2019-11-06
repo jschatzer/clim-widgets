@@ -59,7 +59,7 @@ to do
 ;-----------------------------------------
 ;1) ICD BROWSER
 ;-----------------------------------------
-(cw:inf-meth 
+(cw:define-node-methods 
   :nc node-88)
 
 (define-application-frame icd9it (tree)
@@ -93,7 +93,7 @@ to do
 ;-----------------------------------------
 ;2) CLASS-BROWSER
 ;-----------------------------------------
-(cw:inf-meth 
+(cw:define-node-methods 
   :nc node-cb
   :cc symbol
   :cy eql
@@ -183,7 +183,7 @@ to do
 ;simplify
 (defun symbol-tree (p) (mapcar (lambda (x) (cons (car x) (mktree (cdr x)))) (present-symbols%% p)))
 
-(cw:inf-meth 
+(cw:define-node-methods 
   :nc node-pkg)
 
 ; 2) gui -- nodes should not be sensible
@@ -319,7 +319,7 @@ to do
         when names collect
         (cons what (remove-if 'consp names))))  ; remove "setf functions" e.g. AREF (SETF AREF)
 
-(cw:inf-meth 
+(cw:define-node-methods 
   :nc node-pkg)
 
 ; 2) gui -- nodes should not be sensible

@@ -31,7 +31,7 @@ in the current package but only makes them accessible by inheritance.|#
     children c-nodep childnode-is-youngestsibling
     tree node leaf  ; classes
     tree-view group display-tree
-    inf-meth n))
+    define-node-methods n))
 
 (defpackage clim-widgets
   (:nicknames cw)
@@ -47,7 +47,7 @@ in the current package but only makes them accessible by inheritance.|#
     children c-nodep childnode-is-youngestsibling
     tree node leaf  ; classes
     tree-view group display-tree
-    inf-meth n
+    define-node-methods n
     t2h nodes sym2stg key pack textsize))
 
 (defpackage cw-examples (:use clim clim-lisp clim-widgets))

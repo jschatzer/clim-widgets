@@ -89,7 +89,8 @@
 (defmethod c-nodep (n) nil)   ; test if child is node
 (defmethod children (n) nil)
 
-(defmacro inf-meth (&key  ;short keywords
+;(defmacro define-node-methods (&key  ;short keywords
+(defmacro define-node-methods (&key  ;short keywords
                      ((:nc node-class) 'node) 
                      ((:cc children-class) 'string) 
                      ((:nn item-name-form) '(sup n)) 
@@ -232,7 +233,7 @@
 ; 5) SOME FUNCTIONS FOR SIMPLE CASES
 ;************************************************************
 ; 1) *** VIEW DIRECTORY - from http://osdir.com/ml/mcclim-devel/2009-08/msg00010.html
-(inf-meth 
+(define-node-methods 
   :nc node-fs
   :cc pathname
   :cy path:=
@@ -256,7 +257,7 @@
 #|
 ;========================================
 ;---- with uiop
-(inf-meth 
+(define-node-methods 
   :nc node-fs
   :cc pathname
 ;  :cy path:=
@@ -286,7 +287,7 @@
 ;     ("leaf112"))))    ;     (leaf112))))
 
 ; -1- string-items
-(inf-meth)
+(define-node-methods)
 
 ;  (defun treeview-strings (tree key) ;initial key
 ;    (t2h tree)  ; 1) create hash-table
@@ -310,7 +311,7 @@
 ;(cw:treeview-strings cw-examples::stgtree)
 
 ; -1- symbol-items --- converts symbols to strings
-;  (inf-meth
+;  (define-node-methods
 ;    :nc node-z)
 ;  
 ;  (defun treeview-symbols (tree key)
