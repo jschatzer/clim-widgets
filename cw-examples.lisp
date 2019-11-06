@@ -68,10 +68,10 @@ to do
   (:menu-bar cw:tree)
   (:panes 
    (tree :application :display-function 'display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)
-   (info :application :display-function 'disp-info :incremental-redisplay t))
+   (info :application :display-function 'show-childreno :incremental-redisplay t))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
-(defmethod disp-info ((f icd9it) p)
+(defmethod show-childreno ((f icd9it) p)
   (mapc (lambda (x)
           (flet ((wdo (s stg ink) (with-drawing-options (s :ink ink :text-face :bold) (format s "~a" stg))))
             (cond 
@@ -87,7 +87,7 @@ to do
 
 (defun icd-test (tree &optional (key (caar tree)))
   (cw:t2h tree)
-  (cw:tree-view (make-instance 'node-88 :sup key :disp-inf t) 'icd9it 'icd :pretty-name "icd9it" :right 800))
+  (cw:tree-view (make-instance 'node-88 :sup key :show-children t) 'icd9it 'icd :pretty-name "icd9it" :right 800))
 
 
 ;-----------------------------------------
@@ -105,7 +105,7 @@ to do
 (defun class-browser1 (key) ;initial key
   (cw:tree-view (make-instance 'node-cb 
                             :sup key  ; key is a symbol which names a class <----- 
-                            :disp-inf t) 'tree 'symbol))
+                            :show-children t) 'tree 'symbol))
 
 ;;; two-panes
 ;------------------------------------------------------------------------
@@ -115,19 +115,19 @@ to do
   (:menu-bar cw:tree)
   (:panes 
    (tree :application :display-function 'cw:display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)
-   (info :application :display-function 'disp-info :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow))
+   (info :application :display-function 'show-childreno :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
-(defmethod disp-info ((f class-browser) p) (describe (ignore-errors (find-class (info *application-frame*))) p))
+(defmethod show-childreno ((f class-browser) p) (describe (ignore-errors (find-class (info *application-frame*))) p))
 
 (define-presentation-type item () :inherit-from 'string)
 (define-presentation-method present (item (type item) s v &key) (format s "~a" item))
 (define-class-browser-command xxx ((item 'item :gesture :select)) (setf (info *application-frame*) item))
 
 (defun class-browser2 (key)
-;  (cw:tree-view (make-instance 'node-cb :sup key :disp-inf t) 'item 'class-browser :right 800))
-;  (cw:tree-view (make-instance 'node-cb :sup key :disp-inf t) 'item :pretty-name "class-browser" :right 800))
-  (cw:tree-view (make-instance 'node-cb :sup key :disp-inf t) 'class-browser 'item :right 800))
+;  (cw:tree-view (make-instance 'node-cb :sup key :show-children t) 'item 'class-browser :right 800))
+;  (cw:tree-view (make-instance 'node-cb :sup key :show-children t) 'item :pretty-name "class-browser" :right 800))
+  (cw:tree-view (make-instance 'node-cb :sup key :show-children t) 'class-browser 'item :right 800))
 
 ;-----------------------------------------
 ;3) PACKAGE-BROWSER, a simple draft of a package documentation
@@ -193,11 +193,11 @@ to do
   ;(:menu-bar cw:tree)
   (:panes 
    (tree :application :display-function 'cw:display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)
-   (info :application :display-function 'disp-info :incremental-redisplay t))
+   (info :application :display-function 'show-childreno :incremental-redisplay t))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
-;(defmethod disp-info ((f pkg-doc) p) (describe (info *application-frame*) p))
-(defmethod disp-info ((f pkg-doc) p) (describe (h:sym (info *application-frame*) p)))
+;(defmethod show-childreno ((f pkg-doc) p) (describe (info *application-frame*) p))
+(defmethod show-childreno ((f pkg-doc) p) (describe (h:sym (info *application-frame*) p)))
 
 (define-pkg-doc-command show-info ((item 'string :gesture :select))   
   (setf (info *application-frame*) item))
@@ -212,9 +212,9 @@ to do
 
 (defun tview (tree key)
   (cw:t2h-r tree)
-;  (cw:tree-view (make-instance 'node-pkg :sup key :disp-inf t) 'string 'pkg-doc :right 800))
-;  (cw:tree-view (make-instance 'node-pkg :sup key :disp-inf t) 'string :pretty-name "pkg-doc" :right 800))   ; 11.10.19
-  (cw:tree-view (make-instance 'node-pkg :sup key :disp-inf t) 'pkg-doc 'string :right 800))
+;  (cw:tree-view (make-instance 'node-pkg :sup key :show-children t) 'string 'pkg-doc :right 800))
+;  (cw:tree-view (make-instance 'node-pkg :sup key :show-children t) 'string :pretty-name "pkg-doc" :right 800))   ; 11.10.19
+  (cw:tree-view (make-instance 'node-pkg :sup key :show-children t) 'pkg-doc 'string :right 800))
 
 ;  (defun tview (tree key)
 ;  ;  (cw:t2h tree)
@@ -222,15 +222,15 @@ to do
 ;    (cw:tree-view (make-instance 'node-pkg :sup 
 ;                                 ;key
 ;                                 (lol:symb key)
-;                                 :disp-inf t) 'string 'pkg-doc :right 800))
+;                                 :show-children t) 'string 'pkg-doc :right 800))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,
 (define-pkg-doc-command (packages :menu t) ()
   (let ((pkg (menu-choose pkg-list)))
 ;   (tview (cw:sym2stg (cw-utils::pack-leaves (cons pkg (present-symbols%% (h:kwd pkg))))))))
 
-;(setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (package-name pkg) :disp-inf t))
-(setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (h:kwd pkg) :disp-inf t))
+;(setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (package-name pkg) :show-children t))
+(setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (h:kwd pkg) :show-children t))
 
     (redisplay-frame-panes *application-frame* :force-p t)))
 
@@ -242,14 +242,14 @@ to do
     (cw:t2h tree)
   ;  (cw:t2h-r tree)
     (cw:tree-view (make-instance 'node-pkg :sup key
-                                 :disp-inf t) 'pkg-doc 'string :right 800))
+                                 :show-children t) 'pkg-doc 'string :right 800))
 
 ;;; geht
   (defun tview (tree key)
     (cw:t2h tree)
   ;  (cw:t2h-r tree)
     (cw:tree-view (make-instance 'node-pkg :sup (string-downcase key)
-                                 :disp-inf t) 'pkg-doc 'string :right 800))
+                                 :show-children t) 'pkg-doc 'string :right 800))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;,
 (define-pkg-doc-command (packages :menu t) ()
@@ -258,7 +258,7 @@ to do
 ;                                                        (h:sym pkg) 
                                                         (string-downcase pkg) 
 
-                                                        :disp-inf t))
+                                                        :show-children t))
     (redisplay-frame-panes *application-frame* :force-p t)))
 
 
@@ -286,7 +286,7 @@ to do
   (defun tview (&optional (key :clim))
     (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons key (present-symbols%% key)))))
     (cw:tree-view (make-instance 'node-pkg :sup (string-downcase key)
-                                 :disp-inf t) 'pkg-doc 'string :right 800))
+                                 :show-children t) 'pkg-doc 'string :right 800))
 
 
 #|
@@ -332,12 +332,12 @@ to do
    (info :application :display-function 'disp-pkg-info :incremental-redisplay t))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
-;(defmethod disp-info ((f pkg-doc) p) (describe (info *application-frame*) p))
+;(defmethod show-childreno ((f pkg-doc) p) (describe (info *application-frame*) p))
 
 (defmethod disp-pkg-info ((f pkg-doc) p) (describe (h:sym (info *application-frame*) p)))
 
 
-;(defmethod disp-info ((f pkg-doc) p) (inspect (h:sym (info *application-frame*) p)))
+;(defmethod show-childreno ((f pkg-doc) p) (inspect (h:sym (info *application-frame*) p)))
 
 
 (define-pkg-doc-command show-info ((item 'string :gesture :select))   
@@ -353,7 +353,7 @@ to do
 ;geht, ohne neues frame
 (define-pkg-doc-command (packages :menu t) ()
   (let ((pkg (menu-choose pkg-list)))
-    (setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (string-downcase pkg) :disp-inf t))
+    (setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (string-downcase pkg) :show-children t))
     (redisplay-frame-panes *application-frame* :force-p t)))
 
 ;; gehen
@@ -362,13 +362,13 @@ to do
   (defun tview (&optional (key :clim))
     (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons key (present-symbols%% key)))))
     (cw:tree-view (make-instance 'node-pkg :sup (string-downcase key)
-                                 :disp-inf t) 'pkg-doc 'string :right 800))
+                                 :show-children t) 'pkg-doc 'string :right 800))
 (defun pkg-doc (&optional (pkg :clim))
   (clim-sys:make-process 
     (lambda ()
       (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons pkg (present-symbols%% pkg)))))
       (cw:tree-view (make-instance 'node-pkg :sup (string-downcase pkg)
-                                   :disp-inf t) 'pkg-doc 'string :right 800))))
+                                   :show-children t) 'pkg-doc 'string :right 800))))
 
 ;;display info geht noch nicht
 ;; rename package-doc, pkg-doc

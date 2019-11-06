@@ -23,7 +23,7 @@
 (define-presentation-method highlight-presentation ((type icon) r s st) :unhighlight)
 (define-presentation-method present (o (type icon) s v &key) (disp-tree o ptype s (indentation o)))
 
-(defmethod toggle (n) (setf (disp-inf n) (not (disp-inf n))))
+(defmethod toggle (n) (setf (show-children n) (not (show-children n))))
 
 ; when doing all calculationsts with d, there is no need for scaling
 (define-symbol-macro d (STREAM-CHARACTER-WIDTH s #\m))
@@ -36,7 +36,7 @@
   (stream-increment-cursor-position s (* 1.5 d) nil))
 
 (defmethod grid (s i n)
-  (let* ((spaces (initial-space n))
+  (let* ((spaces (indent n))
          (bars (- i spaces))) 
     ;1) do initial spaces
     (dotimes (x spaces) (spc s))
@@ -66,7 +66,7 @@
 
 (defun draw-icon (s group)
   (with-output-as-presentation (s group 'icon)
-    (let ((open-p (disp-inf group)))
+    (let ((open-p (show-children group)))
       (multiple-value-bind (x y) (stream-cursor-position s)
         (funcall icon s x y open-p)))))
 
@@ -74,28 +74,27 @@
 ; 2) CREATE CHILDREN INSTANCES
 ;************************************************************
 (defclass item ()
-  ((sup :accessor sup :initarg :sup)  ; ev name
-   (initial-space :accessor initial-space :initarg :initial-space :initform 0)))
+  ((name :accessor name :initarg :sup)  ; ev name
+   (indent :accessor indent :initarg :indent :initform 0)))
 
 (defclass leaf (item) ())  ; leaf shall/may not be a superclass of node 
 
 (defclass node (item) 
-  ((inf :accessor inf :documentation "inferiors, list")
+  ((children :accessor children :documentation "inferiors, list")
    (youngest-child :accessor youngest-child :initarg :youngest-child :initform t)
-   (disp-inf :initform nil :initarg :disp-inf :accessor disp-inf :documentation "boolean")))
+   (show-children :initform nil :initarg :show-children :accessor show-children :documentation "boolean")))  ; change default to t <---   rename show-children <----
 
 (defmethod item-name (n) n)
-;(defmethod inf (n) nil)
-(defmethod c-nodep (n) nil)   ; test if child is node
+;(defmethod children (n) nil)
+(defmethod node-p (n) nil)   ; test if child is node
 (defmethod children (n) nil)
 
-;(defmacro define-node-methods (&key  ;short keywords
 (defmacro define-node-methods (&key  ;short keywords
                      ((:nc node-class) 'node) 
                      ((:cc children-class) 'string) 
-                     ((:nn item-name-form) '(sup n)) 
-                     ((:ln leaf-name-form) '(sup n)) 
-                     ((:c children-form) '(gethash (sup n) nodes)) 
+                     ((:nn item-name-form) '(name n)) 
+                     ((:ln leaf-name-form) '(name n)) 
+                     ((:c children-form) '(gethash (name n) nodes)) 
                      ((:cp c-node-p-form) '(gethash n nodes)) 
                      ((:cy childnode-is-youngestsibling-form) 'string=))
   "Define variants of node and leaf CLASSES and corresponding METHODS to get the childs of a node.
@@ -119,24 +118,24 @@
         (defmethod item-name ((n ,node-class)) ,item-name-form)
         (defmethod item-name ((n ,leaf-class)) ,leaf-name-form)
         (defmethod children ((n ,node-class)) ,children-form)
-        (defmethod c-nodep ((n ,children-class)) ,c-node-p-form) ; the child is a node if it has children
-        (defmethod childnode-is-youngestsibling ((n ,children-class) ch) (and (c-nodep n) (,childnode-is-youngestsibling-form n (car (last ch)))))
-        (defmethod inf :before ((n ,node-class))
+        (defmethod node-p ((n ,children-class)) ,c-node-p-form) ; the child is a node if it has children
+        (defmethod childnode-is-youngestsibling ((n ,children-class) ch) (and (node-p n) (,childnode-is-youngestsibling-form n (car (last ch)))))
+        (defmethod children :before ((n ,node-class))
           "create children-instances"
           (unless (slot-boundp n 'inf) 
             (let ((children (children n))
-                  (sp (initial-space n)))
-              (setf (inf n) (mapcar 
+                  (sp (indent n)))
+              (setf (children n) (mapcar 
                               (lambda (x) 
-                                (if (c-nodep x) 
+                                (if (node-p x) 
                                   (if (youngest-child n) ; if this (parent)-node is youngest sibling
                                     (if (childnode-is-youngestsibling x children)
-                                      (make-instance ',node-class :sup x :initial-space (1+ sp) :youngest-child t)
-                                      (make-instance ',node-class :sup x :initial-space (1+ sp) :youngest-child nil))
-                                    (make-instance ',node-class :sup x :initial-space sp :youngest-child nil))
+                                      (make-instance ',node-class :name x :indent (1+ sp) :youngest-child t)
+                                      (make-instance ',node-class :name x :indent (1+ sp) :youngest-child nil))
+                                    (make-instance ',node-class :name x :indent sp :youngest-child nil))
                                   (if (youngest-child n)
-                                    (make-instance ',leaf-class :sup x :initial-space (1+ sp))
-                                    (make-instance ',leaf-class :sup x :initial-space sp))))
+                                    (make-instance ',leaf-class :name x :indent (1+ sp))
+                                    (make-instance ',leaf-class :name x :indent sp))))
                               children))))))))
 
 ;************************************************************
@@ -150,8 +149,8 @@
     (pointr s)
     (draw-icon s item)
     (call-next-method)  ; <- item-name
-    (when (disp-inf item)
-        (dolist (child (inf item))
+    (when (show-children item)
+        (dolist (child (children item))
           (disp-tree child pt s (1+ indent))))))
 
 ;leaves
@@ -171,7 +170,7 @@
 ;************************************************************
 (define-application-frame tree ()
   ((txtsize :accessor txtsize :initform :normal)
-   (group :accessor group :initarg :group)
+   (group :accessor group :initarg :group :documentation "group is an object of a node-class")
    (ptype :accessor ptype :initarg :ptype))
   (:pane (make-pane 'application-pane :display-function 'display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)))
 
@@ -237,21 +236,21 @@
   :nc node-fs
   :cc pathname
   :cy path:=
-  :nn (let ((lst (pathname-directory (sup n)))) (when (consp lst) (car (last lst))))
-  :ln (file-namestring (sup n))
-  :c  (fad:list-directory (sup n))
+  :nn (let ((lst (pathname-directory (name n)))) (when (consp lst) (car (last lst))))
+  :ln (file-namestring (name n))
+  :c  (fad:list-directory (name n))
   :cp (path:-d n))
 
 ;(defun list-dir (d) ;initial key
 ;  (tree-view (make-instance 'node-fs 
-;                            :sup (path:dirname d) 
-;                            :disp-inf t) 
+;                            :name (path:dirname d) 
+;                            :show-children t) 
 ;             'string))
 ;
 (defun list-dir (d) ;initial key
   (tree-view (make-instance 'node-fs 
-                            :sup (path:dirname d) 
-                            :disp-inf t)))
+                            :name (path:dirname d) 
+                            :show-children t)))
 
 
 #|
@@ -262,20 +261,20 @@
   :cc pathname
 ;  :cy path:=
   :cy uiop:pathname-equal
-  :nn (let ((lst (pathname-directory (sup n)))) (when (consp lst) (car (last lst))))
-  :ln (file-namestring (sup n))
-;  :c  (fad:list-directory (sup n))
-;  :c  (uiop:directory* (sup n))
-;  :c  (uiop:directory-files (sup n))
-  :c  (format t "~s*" (uiop:directory* (sup n)))
+  :nn (let ((lst (pathname-directory (name n)))) (when (consp lst) (car (last lst))))
+  :ln (file-namestring (name n))
+;  :c  (fad:list-directory (name n))
+;  :c  (uiop:directory* (name n))
+;  :c  (uiop:directory-files (name n))
+  :c  (format t "~s*" (uiop:directory* (name n)))
 ;  :cp (path:-d n))
   :cp (uiop:directory-exists-p n))
 
 (defun list-dir (d) ;initial key
   (tree-view (make-instance 'node-fs 
-;                            :sup (path:dirname d) 
-                            :sup d 
-                            :disp-inf t)))
+;                            :name (path:dirname d) 
+                            :name d 
+                            :show-children t)))
 =======================================================
 |#
 
@@ -291,13 +290,13 @@
 
 ;  (defun treeview-strings (tree key) ;initial key
 ;    (t2h tree)  ; 1) create hash-table
-;    (tree-view (make-instance 'node :sup key :disp-inf t) 'string))            ;; so gehts 9.10.2019
-;  ;  (tree-view (make-instance 'node :sup key :disp-inf t) 'string 'string ))
+;    (tree-view (make-instance 'node :name key :show-children t) 'string))            ;; so gehts 9.10.2019
+;  ;  (tree-view (make-instance 'node :name key :show-children t) 'string 'string ))
 
 ;geht
 ;(defun treeview-strings (tree key) ;initial key
 ;  (t2h tree)  ; 1) create hash-table
-;  (tree-view (make-instance 'node :sup key :disp-inf t)))
+;  (tree-view (make-instance 'node :name key :show-children t)))
 
 ;(defun treeview-strings (tree &optional (key (caar tree)))
 
@@ -305,7 +304,7 @@
 (defun treeview (tree &optional (key (caar tree)))
   "view a tree"  ; of stringitems  <--??
   (t2h tree)  ; 1) create hash-table
-  (tree-view (make-instance 'node :sup key :disp-inf t)))
+  (tree-view (make-instance 'node :name key :show-children t)))
 
 
 ;(cw:treeview-strings cw-examples::stgtree)
@@ -316,8 +315,8 @@
 ;  
 ;  (defun treeview-symbols (tree key)
 ;    (t2h (sym2stg tree))
-;    (tree-view (make-instance 'node-z :sup (string-downcase (symbol-name key)) :disp-inf t) 'string))
-;  ;  (tree-view (make-instance 'node-z :sup (string-downcase (symbol-name key)) :disp-inf t) 'string 'string))
+;    (tree-view (make-instance 'node-z :name (string-downcase (symbol-name key)) :show-children t) 'string))
+;  ;  (tree-view (make-instance 'node-z :name (string-downcase (symbol-name key)) :show-children t) 'string 'string))
 ;  
 ;  ;run (cw:treeview-symbols cw-examples::symtree 'icd)
 ;  ;------------------------------------------------------
