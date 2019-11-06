@@ -14,7 +14,58 @@
                 (t (setf (gethash (car x) nodes) (mapcar #'car (cdr x))) (t2h (cdr x)))))
         tree))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,,
+;; 16.10,2019 geht
+;gehen
+;(pack-leaves '("a" "b" ("c" "d")))  ---> (("a" ("b") ("c" ("d")))
+;(treeview (pack-leaves '("a" "b" ("c" "d"))))
+;(treeview (pack-leaves (pkg-doc:pkg-tree "CLIM")))
+(defun pack-leaves (l)
+  "recursive pack every leaf-node into parentheses"
+  (list
+    (cons (car l)
+          (mapcar (lambda (x)
+                    (cond ((atom x) (list x))
+                          (t (if (every 'atom x) 
+                               (cons (car x) (mapcar 'list (cdr x)))
+                               (cons (car x) (pack-leaves (cdr x)))))))
+                  (cdr l)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,,
+
+
+
 #|
+16.10.2019
+* (pkg-doc:pkg-tree "CL-FAD")
+
+("CL-FAD"
+ ("function:-" "function:-canonical-pathname"
+  ("function:-copy-" "function:-copy-file" "function:-copy-stream")
+  "function:-delete-directory-and-files"
+  ("function:-directory-" "function:-directory-exists-p"
+   "function:-directory-pathname-p")
+  "function:-file-exists-p" "function:-list-directory"
+  ("function:-merge-pathnames-"
+   ("function:-merge-pathnames-as-" "function:-merge-pathnames-as-directory"
+    "function:-merge-pathnames-as-file"))
+  "function:-open-temporary"
+  ("function:-pathname-" "function:-pathname-absolute-p"
+   ("function:-pathname-as-" "function:-pathname-as-directory"
+    "function:-pathname-as-file")
+   "function:-pathname-directory-pathname" "function:-pathname-equal"
+   "function:-pathname-parent-directory" "function:-pathname-relative-p"
+   "function:-pathname-root-p")
+  "function:-walk-directory")
+ ("macro:-"
+  ("macro:-with-" "macro:-with-open-temporary-file"
+   "macro:-with-output-to-temporary-file"))
+ ("variable:-" "variable:-*default-template*")
+ ("condition:-" "condition:-cannot-create-temporary-file"
+  "condition:-invalid-temporary-pathname-template"))
+*
+
+=======
 * (clim-pkg-doc::pkg-tree :cl-fad)
 
   (("CL-FAD"

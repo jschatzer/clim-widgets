@@ -195,10 +195,39 @@
 |#
 
 ;; 14.10.19
-(defun tree-view (group &optional (frame 'tree) (ptype 'string) &key &allow-other-keys)
-    (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left 0 :top 0 :right 400 :bottom 400)))
+;(defun tree-view (group &optional (frame 'tree) (ptype 'string) &key &allow-other-keys)
+;    (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left 0 :top 0 :right 400 :bottom 400)))
 
 
+;######################################################################################################
+#|
+;######################################################################################################
+; 16.10.19
+; so geht pkg-doc ru-accent ru-reader atc cw:list-dir 
+; so geht right 800, aber nicht pretty name <--
+
+(defun tree-view (group &optional (frame 'tree) (ptype 'string) &key (left 0) (top 0) (right 400) (bottom 400) &allow-other-keys)
+  (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left left :top top :right right :bottom bottom)))
+;######################################################################################################
+|#
+;######################################################################################################
+
+
+;test pretty name, scheint zu gehen, test (icd10lquery::icd-clim :i)   etc
+(defun tree-view (group &optional (frame 'tree) (ptype 'string) &key (left 0) (top 0) (right 400) (bottom 400)(pretty-name (symbol-name frame)) &allow-other-keys)
+  (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
+
+;(defun tree-view (group &optional (frame 'tree) (ptype 'string) &rest options  &key (left 0) (top 0) (right 400) (bottom 400) &allow-other-keys)
+;  (run-frame-top-level (make-application-frame frame options :group group :ptype ptype :left left :top top :right right :bottom bottom)))
+
+
+#|
+;;; sieht options in make-application-frame  <--- ???
+;;; so geht pretty name und size 800
+(defun tree-view (group &optional (frame 'tree) (ptype 'string) &key (left 0) (top 0) (right 400) (bottom 400) (pretty-name frame) &allow-other-keys)
+;  (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left left :top top :right right :bottom bottom &allow-other-keys)))
+  (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
+|#
 ;************************************************************
 ; 5) SOME FUNCTIONS FOR SIMPLE CASES
 ;************************************************************
@@ -271,6 +300,7 @@
 
 ;(defun treeview-strings (tree &optional (key (caar tree)))
 
+;; include autoscroll
 (defun treeview (tree &optional (key (caar tree)))
   "view a tree"  ; of stringitems  <--??
   (t2h tree)  ; 1) create hash-table

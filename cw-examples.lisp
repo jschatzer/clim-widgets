@@ -118,7 +118,7 @@ to do
    (info :application :display-function 'disp-info :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
-(defmethod disp-info ((f class-browser) p) (format p "~a" (describe (ignore-errors (find-class (info *application-frame*))))))
+(defmethod disp-info ((f class-browser) p) (describe (ignore-errors (find-class (info *application-frame*))) p))
 
 (define-presentation-type item () :inherit-from 'string)
 (define-presentation-method present (item (type item) s v &key) (format s "~a" item))
@@ -139,6 +139,7 @@ to do
 ;(defparameter pkg-list (cons :common-lisp (sort (mapcar (lambda (x) (intern (package-name x) :keyword)) (list-all-packages)) #'string<)))
 
 ;(defparameter pkg-list (sort (mapcar (lambda (x) (intern (package-name x) :keyword)) (list-all-packages)) #'string<))
+
 (defparameter pkg-list (sort (mapcar 'package-name (list-all-packages)) #'string<))
 
 
@@ -195,7 +196,8 @@ to do
    (info :application :display-function 'disp-info :incremental-redisplay t))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
-(defmethod disp-info ((f pkg-doc) p) (describe (info *application-frame*) p))
+;(defmethod disp-info ((f pkg-doc) p) (describe (info *application-frame*) p))
+(defmethod disp-info ((f pkg-doc) p) (describe (h:sym (info *application-frame*) p)))
 
 (define-pkg-doc-command show-info ((item 'string :gesture :select))   
   (setf (info *application-frame*) item))
@@ -205,6 +207,8 @@ to do
   (let ((pkg (menu-choose pkg-list)))
    (tview (list (cons pkg (symbol-tree pkg))) pkg)))
 ;   (tview (pkg-doc::pkg-tree pkg) pkg)))
+
+
 
 (defun tview (tree key)
   (cw:t2h-r tree)
@@ -219,6 +223,71 @@ to do
 ;                                 ;key
 ;                                 (lol:symb key)
 ;                                 :disp-inf t) 'string 'pkg-doc :right 800))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,
+(define-pkg-doc-command (packages :menu t) ()
+  (let ((pkg (menu-choose pkg-list)))
+;   (tview (cw:sym2stg (cw-utils::pack-leaves (cons pkg (present-symbols%% (h:kwd pkg))))))))
+
+;(setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (package-name pkg) :disp-inf t))
+(setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (h:kwd pkg) :disp-inf t))
+
+    (redisplay-frame-panes *application-frame* :force-p t)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,
+
+
+;;; geht
+  (defun tview (tree &optional (key (caar tree)))
+    (cw:t2h tree)
+  ;  (cw:t2h-r tree)
+    (cw:tree-view (make-instance 'node-pkg :sup key
+                                 :disp-inf t) 'pkg-doc 'string :right 800))
+
+;;; geht
+  (defun tview (tree key)
+    (cw:t2h tree)
+  ;  (cw:t2h-r tree)
+    (cw:tree-view (make-instance 'node-pkg :sup (string-downcase key)
+                                 :disp-inf t) 'pkg-doc 'string :right 800))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;,
+(define-pkg-doc-command (packages :menu t) ()
+  (let ((pkg (menu-choose pkg-list)))
+    (setf (cw:group *application-frame*) (make-instance 'node-pkg :sup 
+;                                                        (h:sym pkg) 
+                                                        (string-downcase pkg) 
+
+                                                        :disp-inf t))
+    (redisplay-frame-panes *application-frame* :force-p t)))
+
+
+
+(define-pkg-doc-command (packages :menu t) ()
+  (let ((pkg (menu-choose pkg-list)))
+    (setf (cw:group *application-frame*) (h:kwd pkg))
+    (redisplay-frame-panes *application-frame* :force-p t)))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,
+;; geht, macht aber neues frame
+(define-pkg-doc-command (packages :menu t) ()
+  (let ((pkg (menu-choose pkg-list)))
+;    (setf (cw:group *application-frame*) (h:kwd pkg))
+    (tview (h:kwd pkg))))
+;    (redisplay-frame-panes *application-frame* :force-p t)))
+
+
+
+;; gehen
+;(tview)
+;(tview :nsort)
+  (defun tview (&optional (key :clim))
+    (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons key (present-symbols%% key)))))
+    (cw:tree-view (make-instance 'node-pkg :sup (string-downcase key)
+                                 :disp-inf t) 'pkg-doc 'string :right 800))
+
 
 #|
 (defun pkg-doc (&optional (pkg :clim)) 
@@ -237,6 +306,75 @@ to do
 (defun pkg-doc (&optional (pkg "CLIM"))
    (tview  (pkg-doc::pkg-tree pkg) pkg))
 |#
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,,,,,
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,,,,,
+;;;;;;;;;;
+(defparameter pkg-list (sort (mapcar 'package-name (list-all-packages)) #'string<))
+
+; from Peter Seibel's "manifest" quicklisp package
+(defun present-symbols%% (pkg)
+  (loop for what in manifest::*categories*
+        for names = (manifest::names pkg what)
+        when names collect
+        (cons what (remove-if 'consp names))))  ; remove "setf functions" e.g. AREF (SETF AREF)
+
+(cw:inf-meth 
+  :nc node-pkg)
+
+; 2) gui -- nodes should not be sensible
+(define-application-frame pkg-doc (cw:tree)
+ ((info :accessor info :initform ""))
+  (:command-table (pkg-doc :inherit-from (cw:tree)))
+  ;(:menu-bar cw:tree)
+  (:panes 
+   (tree :application :display-function 'cw:display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)
+   (info :application :display-function 'disp-pkg-info :incremental-redisplay t))
+	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
+
+;(defmethod disp-info ((f pkg-doc) p) (describe (info *application-frame*) p))
+
+(defmethod disp-pkg-info ((f pkg-doc) p) (describe (h:sym (info *application-frame*) p)))
+
+
+;(defmethod disp-info ((f pkg-doc) p) (inspect (h:sym (info *application-frame*) p)))
+
+
+(define-pkg-doc-command show-info ((item 'string :gesture :select))   
+  (setf (info *application-frame*) item))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,
+;; geht, macht aber neues frame
+(define-pkg-doc-command (packages :menu t) ()
+  (let ((pkg (menu-choose pkg-list)))
+    (tview (h:kwd pkg))))
+
+;geht, ohne neues frame
+(define-pkg-doc-command (packages :menu t) ()
+  (let ((pkg (menu-choose pkg-list)))
+    (setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (string-downcase pkg) :disp-inf t))
+    (redisplay-frame-panes *application-frame* :force-p t)))
+
+;; gehen
+;(tview)
+;(tview :nsort)
+  (defun tview (&optional (key :clim))
+    (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons key (present-symbols%% key)))))
+    (cw:tree-view (make-instance 'node-pkg :sup (string-downcase key)
+                                 :disp-inf t) 'pkg-doc 'string :right 800))
+(defun pkg-doc (&optional (pkg :clim))
+  (clim-sys:make-process 
+    (lambda ()
+      (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons pkg (present-symbols%% pkg)))))
+      (cw:tree-view (make-instance 'node-pkg :sup (string-downcase pkg)
+                                   :disp-inf t) 'pkg-doc 'string :right 800))))
+
+;;display info geht noch nicht
+;; rename package-doc, pkg-doc
+;run
+;(tview)
+;(tview :nsort)
 
 
 ;------------------------
