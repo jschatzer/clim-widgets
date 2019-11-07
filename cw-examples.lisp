@@ -87,7 +87,7 @@ to do
 
 (defun icd-test (tree &optional (key (caar tree)))
   (cw:t2h tree)
-  (cw:tree-view (make-instance 'node-88 :sup key :show-children t) 'icd9it 'icd :pretty-name "icd9it" :right 800))
+  (cw:tree-view (make-instance 'node-88 :name key :show-children t) 'icd9it 'icd :pretty-name "icd9it" :right 800))
 
 
 ;-----------------------------------------
@@ -97,14 +97,14 @@ to do
   :nc node-cb
   :cc symbol
   :cy eql
-  :nn (class-name (find-class (cw:sup cw:n)))
-  :c  (mapcar 'class-name (closer-mop:class-direct-subclasses (find-class (cw:sup cw:n))))
+  :nn (class-name (find-class (cw:name cw:n)))
+  :gc  (mapcar 'class-name (closer-mop:class-direct-subclasses (find-class (cw:name cw:n))))
   :cp (closer-mop:class-direct-subclasses (find-class cw:n)))
 
 ;;; one-pane
 (defun class-browser1 (key) ;initial key
   (cw:tree-view (make-instance 'node-cb 
-                            :sup key  ; key is a symbol which names a class <----- 
+                            :name key  ; key is a symbol which names a class <----- 
                             :show-children t) 'tree 'symbol))
 
 ;;; two-panes
@@ -125,9 +125,9 @@ to do
 (define-class-browser-command xxx ((item 'item :gesture :select)) (setf (info *application-frame*) item))
 
 (defun class-browser2 (key)
-;  (cw:tree-view (make-instance 'node-cb :sup key :show-children t) 'item 'class-browser :right 800))
-;  (cw:tree-view (make-instance 'node-cb :sup key :show-children t) 'item :pretty-name "class-browser" :right 800))
-  (cw:tree-view (make-instance 'node-cb :sup key :show-children t) 'class-browser 'item :right 800))
+;  (cw:tree-view (make-instance 'node-cb :name key :show-children t) 'item 'class-browser :right 800))
+;  (cw:tree-view (make-instance 'node-cb :name key :show-children t) 'item :pretty-name "class-browser" :right 800))
+  (cw:tree-view (make-instance 'node-cb :name key :show-children t) 'class-browser 'item :right 800))
 
 ;-----------------------------------------
 ;3) PACKAGE-BROWSER, a simple draft of a package documentation
@@ -212,14 +212,14 @@ to do
 
 (defun tview (tree key)
   (cw:t2h-r tree)
-;  (cw:tree-view (make-instance 'node-pkg :sup key :show-children t) 'string 'pkg-doc :right 800))
-;  (cw:tree-view (make-instance 'node-pkg :sup key :show-children t) 'string :pretty-name "pkg-doc" :right 800))   ; 11.10.19
-  (cw:tree-view (make-instance 'node-pkg :sup key :show-children t) 'pkg-doc 'string :right 800))
+;  (cw:tree-view (make-instance 'node-pkg :name key :show-children t) 'string 'pkg-doc :right 800))
+;  (cw:tree-view (make-instance 'node-pkg :name key :show-children t) 'string :pretty-name "pkg-doc" :right 800))   ; 11.10.19
+  (cw:tree-view (make-instance 'node-pkg :name key :show-children t) 'pkg-doc 'string :right 800))
 
 ;  (defun tview (tree key)
 ;  ;  (cw:t2h tree)
 ;    (cw:t2h-r tree)
-;    (cw:tree-view (make-instance 'node-pkg :sup 
+;    (cw:tree-view (make-instance 'node-pkg :name 
 ;                                 ;key
 ;                                 (lol:symb key)
 ;                                 :show-children t) 'string 'pkg-doc :right 800))
@@ -229,8 +229,8 @@ to do
   (let ((pkg (menu-choose pkg-list)))
 ;   (tview (cw:sym2stg (cw-utils::pack-leaves (cons pkg (present-symbols%% (h:kwd pkg))))))))
 
-;(setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (package-name pkg) :show-children t))
-(setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (h:kwd pkg) :show-children t))
+;(setf (cw:group *application-frame*) (make-instance 'node-pkg :name (package-name pkg) :show-children t))
+(setf (cw:group *application-frame*) (make-instance 'node-pkg :name (h:kwd pkg) :show-children t))
 
     (redisplay-frame-panes *application-frame* :force-p t)))
 
@@ -241,20 +241,20 @@ to do
   (defun tview (tree &optional (key (caar tree)))
     (cw:t2h tree)
   ;  (cw:t2h-r tree)
-    (cw:tree-view (make-instance 'node-pkg :sup key
+    (cw:tree-view (make-instance 'node-pkg :name key
                                  :show-children t) 'pkg-doc 'string :right 800))
 
 ;;; geht
   (defun tview (tree key)
     (cw:t2h tree)
   ;  (cw:t2h-r tree)
-    (cw:tree-view (make-instance 'node-pkg :sup (string-downcase key)
+    (cw:tree-view (make-instance 'node-pkg :name (string-downcase key)
                                  :show-children t) 'pkg-doc 'string :right 800))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;,
 (define-pkg-doc-command (packages :menu t) ()
   (let ((pkg (menu-choose pkg-list)))
-    (setf (cw:group *application-frame*) (make-instance 'node-pkg :sup 
+    (setf (cw:group *application-frame*) (make-instance 'node-pkg :name 
 ;                                                        (h:sym pkg) 
                                                         (string-downcase pkg) 
 
@@ -285,7 +285,7 @@ to do
 ;(tview :nsort)
   (defun tview (&optional (key :clim))
     (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons key (present-symbols%% key)))))
-    (cw:tree-view (make-instance 'node-pkg :sup (string-downcase key)
+    (cw:tree-view (make-instance 'node-pkg :name (string-downcase key)
                                  :show-children t) 'pkg-doc 'string :right 800))
 
 
@@ -353,7 +353,7 @@ to do
 ;geht, ohne neues frame
 (define-pkg-doc-command (packages :menu t) ()
   (let ((pkg (menu-choose pkg-list)))
-    (setf (cw:group *application-frame*) (make-instance 'node-pkg :sup (string-downcase pkg) :show-children t))
+    (setf (cw:group *application-frame*) (make-instance 'node-pkg :name (string-downcase pkg) :show-children t))
     (redisplay-frame-panes *application-frame* :force-p t)))
 
 ;; gehen
@@ -361,13 +361,13 @@ to do
 ;(tview :nsort)
   (defun tview (&optional (key :clim))
     (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons key (present-symbols%% key)))))
-    (cw:tree-view (make-instance 'node-pkg :sup (string-downcase key)
+    (cw:tree-view (make-instance 'node-pkg :name (string-downcase key)
                                  :show-children t) 'pkg-doc 'string :right 800))
 (defun pkg-doc (&optional (pkg :clim))
   (clim-sys:make-process 
     (lambda ()
       (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons pkg (present-symbols%% pkg)))))
-      (cw:tree-view (make-instance 'node-pkg :sup (string-downcase pkg)
+      (cw:tree-view (make-instance 'node-pkg :name (string-downcase pkg)
                                    :show-children t) 'pkg-doc 'string :right 800))))
 
 ;;display info geht noch nicht

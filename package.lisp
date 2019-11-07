@@ -27,8 +27,8 @@ in the current package but only makes them accessible by inheritance.|#
   (:use clim clim-lisp cw-utils)
   (:export
     list-dir treeview ; treeview-strings treeview-symbols 
-    item-name sup
-    children c-nodep childnode-is-youngestsibling
+    item-name name ;sup
+    children node-p childnode-is-youngestsibling
     tree node leaf  ; classes
     tree-view group display-tree
     define-node-methods n))
@@ -43,8 +43,8 @@ in the current package but only makes them accessible by inheritance.|#
     ;tree-view  -- export test -- names may change
     ;---------------------------------
     list-dir treeview ;treeview-strings treeview-symbols
-    item-name sup  ; sup ev remove?
-    children c-nodep childnode-is-youngestsibling
+    item-name name ;sup  ; sup ev remove?
+    children childnode-is-youngestsibling node-p ;c-nodep 
     tree node leaf  ; classes
     tree-view group display-tree
     define-node-methods n

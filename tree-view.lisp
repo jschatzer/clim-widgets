@@ -74,37 +74,36 @@
 ; 2) CREATE CHILDREN INSTANCES
 ;************************************************************
 (defclass item ()
-  ((name :accessor name :initarg :sup)  ; ev name
+  ((name :accessor name :initarg :name)  ; ev name
    (indent :accessor indent :initarg :indent :initform 0)))
 
 (defclass leaf (item) ())  ; leaf shall/may not be a superclass of node 
 
 (defclass node (item) 
-  ((children :accessor children :documentation "inferiors, list")
+  ((children :accessor children :documentation "list of children with attributes such as indentation, node or leaf, youngest-child")
    (youngest-child :accessor youngest-child :initarg :youngest-child :initform t)
    (show-children :initform nil :initarg :show-children :accessor show-children :documentation "boolean")))  ; change default to t <---   rename show-children <----
 
 (defmethod item-name (n) n)
-;(defmethod children (n) nil)
-(defmethod node-p (n) nil)   ; test if child is node
-(defmethod children (n) nil)
+(defgeneric node-p (n) (:documentation "test if child is node or leaf"))
+(defgeneric get-children (n) (:documentation "get a list of children"))
 
 (defmacro define-node-methods (&key  ;short keywords
                      ((:nc node-class) 'node) 
                      ((:cc children-class) 'string) 
                      ((:nn item-name-form) '(name n)) 
                      ((:ln leaf-name-form) '(name n)) 
-                     ((:c children-form) '(gethash (name n) nodes)) 
-                     ((:cp c-node-p-form) '(gethash n nodes)) 
+                     ((:gc get-children-form) '(gethash (name n) nodes)) 
+                     ((:cp node-p-form) '(gethash n nodes)) 
                      ((:cy childnode-is-youngestsibling-form) 'string=))
-  "Define variants of node and leaf CLASSES and corresponding METHODS to get the childs of a node.
+  "Define subclasses of node and leaf CLASSES with corresponding METHODS to get the childs of a node.
    All these classes and methods can also be defined, subclassed, etc. in the normal way.
    Keyword arguments:
    :nc node class
    :cc children class
    :nn node name
    :ln leaf name
-   :c  supply a form that returns a list of a node's children
+   :gc  supply a form that returns a list of a node's children    ### ev cl  for children-list <----
    :cp supply a form to test if a child is node or leaf
    :cy supply a function to test for equality o child nodes
    See view directory for an example usage"
@@ -117,13 +116,13 @@
         ;methods
         (defmethod item-name ((n ,node-class)) ,item-name-form)
         (defmethod item-name ((n ,leaf-class)) ,leaf-name-form)
-        (defmethod children ((n ,node-class)) ,children-form)
-        (defmethod node-p ((n ,children-class)) ,c-node-p-form) ; the child is a node if it has children
+        (defmethod get-children ((n ,node-class)) ,get-children-form)
+        (defmethod node-p ((n ,children-class)) ,node-p-form) ; the child is a node if it has children
         (defmethod childnode-is-youngestsibling ((n ,children-class) ch) (and (node-p n) (,childnode-is-youngestsibling-form n (car (last ch)))))
         (defmethod children :before ((n ,node-class))
           "create children-instances"
-          (unless (slot-boundp n 'inf) 
-            (let ((children (children n))
+          (unless (slot-boundp n 'children) 
+            (let ((children (get-children n))
                   (sp (indent n)))
               (setf (children n) (mapcar 
                               (lambda (x) 
@@ -178,59 +177,32 @@
 (define-presentation-action toggle (icon command tree) (object window) (toggle object) (redisplay-frame-pane *application-frame* window))
 (define-tree-command (txt-size :menu t) () (setf (txtsize *application-frame*) textsize))
 
-#|
-(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) pretty-name &allow-other-keys)
-    (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
-
-;;; siehe zuBehalten QQQQ
-;; oben bug pretty name without default !!! ev use gp or pt ?? statt empty string, 27.8.2019
-;; + problem optional + key !!??
-;; pt ~ frame ?? remove one ??
-(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) (pretty-name "") &allow-other-keys)
-    (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
-
-;; 11.10.19 only keys
-(defun tree-view (gp pt &key (frame 'tree) (left 0) (top 0) (right 400) (bottom 400) (pretty-name "") &allow-other-keys)
-    (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
-|#
-
-;; 14.10.19
-;(defun tree-view (group &optional (frame 'tree) (ptype 'string) &key &allow-other-keys)
-;    (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left 0 :top 0 :right 400 :bottom 400)))
-
-
-;######################################################################################################
-#|
-;######################################################################################################
-; 16.10.19
-; so geht pkg-doc ru-accent ru-reader atc cw:list-dir 
-; so geht right 800, aber nicht pretty name <--
-
-(defun tree-view (group &optional (frame 'tree) (ptype 'string) &key (left 0) (top 0) (right 400) (bottom 400) &allow-other-keys)
-  (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left left :top top :right right :bottom bottom)))
-;######################################################################################################
-|#
-;######################################################################################################
-
-
-;test pretty name, scheint zu gehen, test (icd10lquery::icd-clim :i)   etc
 (defun tree-view (group &optional (frame 'tree) (ptype 'string) &key (left 0) (top 0) (right 400) (bottom 400)(pretty-name (symbol-name frame)) &allow-other-keys)
   (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
 
-;(defun tree-view (group &optional (frame 'tree) (ptype 'string) &rest options  &key (left 0) (top 0) (right 400) (bottom 400) &allow-other-keys)
-;  (run-frame-top-level (make-application-frame frame options :group group :ptype ptype :left left :top top :right right :bottom bottom)))
-
-
-#|
-;;; sieht options in make-application-frame  <--- ???
-;;; so geht pretty name und size 800
-(defun tree-view (group &optional (frame 'tree) (ptype 'string) &key (left 0) (top 0) (right 400) (bottom 400) (pretty-name frame) &allow-other-keys)
-;  (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left left :top top :right right :bottom bottom &allow-other-keys)))
-  (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
-|#
 ;************************************************************
 ; 5) SOME FUNCTIONS FOR SIMPLE CASES
 ;************************************************************
+;-----------------
+; 1) *** VIEW A STRING- or SYMBOL-TREE of this form (using a hash-table)
+; '(("node1"            ; '((node1 
+;    ("node11"          ;    (node11 
+;     ("leaf111")       ;     (leaf111)
+;     ("leaf112"))))    ;     (leaf112))))
+
+; -1- string-items
+(define-node-methods)
+
+;; include autoscroll
+; rename 
+;;;list-view
+;view-list  VIEW LIST <----  view-lol??    items may be strings or symbols 
+(defun treeview (tree &optional (key (caar tree)))
+  "view a tree"  ; of stringitems  <--??
+  (t2h tree)  ; 1) create hash-table
+  (tree-view (make-instance 'node :name key :show-children t)))
+
+;----------------------------------------------------------------------------------
 ; 1) *** VIEW DIRECTORY - from http://osdir.com/ml/mcclim-devel/2009-08/msg00010.html
 (define-node-methods 
   :nc node-fs
@@ -238,15 +210,9 @@
   :cy path:=
   :nn (let ((lst (pathname-directory (name n)))) (when (consp lst) (car (last lst))))
   :ln (file-namestring (name n))
-  :c  (fad:list-directory (name n))
+  :gc  (fad:list-directory (name n))
   :cp (path:-d n))
 
-;(defun list-dir (d) ;initial key
-;  (tree-view (make-instance 'node-fs 
-;                            :name (path:dirname d) 
-;                            :show-children t) 
-;             'string))
-;
 (defun list-dir (d) ;initial key
   (tree-view (make-instance 'node-fs 
                             :name (path:dirname d) 
@@ -254,6 +220,25 @@
 
 
 #|
+;----- test -----
+;----------------------------------------------------------------------------------
+;scheint nicht zu gehen
+(define-node-methods 
+  ;:nc node-fs
+  :cc pathname
+  :cy path:=
+  :nn (let ((lst (pathname-directory (name n)))) (when (consp lst) (car (last lst))))
+  :ln (file-namestring (name n))
+  :gc  (fad:list-directory (name n))
+  :cp (path:-d n))
+
+(defun list-dir-xx (d) ;initial key
+  (tree-view (make-instance 'node ; 'node-fs 
+                            :name (path:dirname d) 
+                            :show-children t)))
+
+
+
 ;========================================
 ;---- with uiop
 (define-node-methods 
@@ -278,34 +263,6 @@
 =======================================================
 |#
 
-;-----------------
-; 2) *** VIEW A STRING- or SYMBOL-TREE of this form (using a hash-table)
-; '(("node1"            ; '((node1 
-;    ("node11"          ;    (node11 
-;     ("leaf111")       ;     (leaf111)
-;     ("leaf112"))))    ;     (leaf112))))
-
-; -1- string-items
-(define-node-methods)
-
-;  (defun treeview-strings (tree key) ;initial key
-;    (t2h tree)  ; 1) create hash-table
-;    (tree-view (make-instance 'node :name key :show-children t) 'string))            ;; so gehts 9.10.2019
-;  ;  (tree-view (make-instance 'node :name key :show-children t) 'string 'string ))
-
-;geht
-;(defun treeview-strings (tree key) ;initial key
-;  (t2h tree)  ; 1) create hash-table
-;  (tree-view (make-instance 'node :name key :show-children t)))
-
-;(defun treeview-strings (tree &optional (key (caar tree)))
-
-;; include autoscroll
-(defun treeview (tree &optional (key (caar tree)))
-  "view a tree"  ; of stringitems  <--??
-  (t2h tree)  ; 1) create hash-table
-  (tree-view (make-instance 'node :name key :show-children t)))
-
 
 ;(cw:treeview-strings cw-examples::stgtree)
 
@@ -320,3 +277,114 @@
 ;  
 ;  ;run (cw:treeview-symbols cw-examples::symtree 'icd)
 ;  ;------------------------------------------------------
+
+;3)view-xml  VIEW XML 
+#|
+* (s-xml:parse-xml-file "books.xml")
+
+(:|bookstore|
+ ((:|book| :|category| "cooking") ((:|title| :|lang| "en") "Everyday Italian")
+  (:|author| "Giada De Laurentiis") (:|year| "2005") (:|price| "30.00"))
+ ((:|book| :|category| "children") ((:|title| :|lang| "en") "Harry Potter")
+  (:|author| "J K. Rowling") (:|year| "2005") (:|price| "29.99"))
+ ((:|book| :|category| "web") ((:|title| :|lang| "en") "XQuery Kick Start")
+  (:|author| "James McGovern") (:|author| "Per Bothner")
+  (:|author| "Kurt Cagle") (:|author| "James Linn")
+  (:|author| "Vaidyanathan Nagarajan") (:|year| "2003") (:|price| "49.99"))
+ ((:|book| :|category| "web" :|cover| "paperback")
+  ((:|title| :|lang| "en") "Learning XML") (:|author| "Erik T. Ray")
+  (:|year| "2003") (:|price| "39.95")))
+|#
+
+;4) view-debian-packages-all
+;   view-executables-available
+#|
+https://askubuntu.com/questions/598384/how-do-i-get-a-list-of-all-available-packages-from-the-repositories-that-are-con
+apt-get update
+apt-cache dump | grep -oP 'Package: \K.*' | sort -n          # available
+
+https://askubuntu.com/questions/1056448/how-to-get-the-list-of-installed-packages-on-ubuntu-debian-w-o-command-or-w-o-lo
+awk -vRS= '/Status: install/ {print $2}' /var/lib/dpkg/status     #installed
+
+https://superuser.com/questions/492501/how-do-i-list-all-of-the-executables-in-a-linux-directory-sub-dirs-path
+find . -type f -executable -maxdepth 1     # find executable files
+|#
+,
+;;  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  
+;;  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  END
+;;  
+;;  #|
+;;  (defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) pretty-name &allow-other-keys)
+;;      (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
+;;  
+;;  ;;; siehe zuBehalten QQQQ
+;;  ;; oben bug pretty name without default !!! ev use gp or pt ?? statt empty string, 27.8.2019
+;;  ;; + problem optional + key !!??
+;;  ;; pt ~ frame ?? remove one ??
+;;  (defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) (pretty-name "") &allow-other-keys)
+;;      (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
+;;  
+;;  ;; 11.10.19 only keys
+;;  (defun tree-view (gp pt &key (frame 'tree) (left 0) (top 0) (right 400) (bottom 400) (pretty-name "") &allow-other-keys)
+;;      (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
+;;  |#
+;;  
+;;  ;; 14.10.19
+;;  ;(defun tree-view (group &optional (frame 'tree) (ptype 'string) &key &allow-other-keys)
+;;  ;    (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left 0 :top 0 :right 400 :bottom 400)))
+;;  
+;;  
+;;  ;######################################################################################################
+;;  #|
+;;  ;######################################################################################################
+;;  ; 16.10.19
+;;  ; so geht pkg-doc ru-accent ru-reader atc cw:list-dir 
+;;  ; so geht right 800, aber nicht pretty name <--
+;;  
+;;  (defun tree-view (group &optional (frame 'tree) (ptype 'string) &key (left 0) (top 0) (right 400) (bottom 400) &allow-other-keys)
+;;    (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left left :top top :right right :bottom bottom)))
+;;  ;######################################################################################################
+;;  |#
+;;  ;######################################################################################################
+;;  
+;;  
+;;  ;test pretty name, scheint zu gehen, test (icd10lquery::icd-clim :i)   etc
+;;  
+;;  ;(defun tree-view (group &optional (frame 'tree) (ptype 'string) &rest options  &key (left 0) (top 0) (right 400) (bottom 400) &allow-other-keys)
+;;  ;  (run-frame-top-level (make-application-frame frame options :group group :ptype ptype :left left :top top :right right :bottom bottom)))
+;;  
+;;  
+;;  #|
+;;  ;;; sieht options in make-application-frame  <--- ???
+;;  ;;; so geht pretty name und size 800
+;;  (defun tree-view (group &optional (frame 'tree) (ptype 'string) &key (left 0) (top 0) (right 400) (bottom 400) (pretty-name frame) &allow-other-keys)
+;;  ;  (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left left :top top :right right :bottom bottom &allow-other-keys)))
+;;    (run-frame-top-level (make-application-frame frame :group group :ptype ptype :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
+;;  |#
+;;  
+;;  ;(defun list-dir (d) ;initial key
+;;  ;  (tree-view (make-instance 'node-fs 
+;;  ;                            :name (path:dirname d) 
+;;  ;                            :show-children t) 
+;;  ;             'string))
+;;  ;
+;;  ;  (defun treeview-strings (tree key) ;initial key
+;;  ;    (t2h tree)  ; 1) create hash-table
+;;  ;    (tree-view (make-instance 'node :name key :show-children t) 'string))            ;; so gehts 9.10.2019
+;;  ;  ;  (tree-view (make-instance 'node :name key :show-children t) 'string 'string ))
+;;  
+;;  ;geht
+;;  ;(defun treeview-strings (tree key) ;initial key
+;;  ;  (t2h tree)  ; 1) create hash-table
+;;  ;  (tree-view (make-instance 'node :name key :show-children t)))
+;;  
+;;  ;(defun treeview-strings (tree &optional (key (caar tree)))
+;(defmethod children (n) nil)
+;(defmethod node-p (n) nil)   ; test if child is node
+;(defmethod children (n) nil)
+;;  
+;;  
