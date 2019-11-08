@@ -9,52 +9,21 @@
      (sleep 2)))
 
 #|
-to do
-(cw:treeview cw-examples::stgtree)       ; use treeview with symbols, too
-
 (cw:list-dir (user-homedir-pathname))    ; with vertical scroll bars
-
-(cw-examples::class-browser1 'number)
-
-(cw-examples::class-browser2 'condition) ; info wird in tree pane unten angehängt
-
-(cw-examples::pkg-doc)   ;remove or make it very simple
-
-
-
-
-#;(defun run-all-examples ()
-  (proc (cw:calendar))
-  (proc (cw:digital-clock-eu))
-  (proc (cw:clock))
-  (proc (cw:treeview-strings stgtree "icd"))
-  (proc (cw:treeview-symbols symtree 'icd))
-  (proc (cw:list-dir (user-homedir-pathname)))
-  (proc (class-browser1 'number))
-  (proc (class-browser2 'condition))
-  (proc (pkg-doc))
-  (proc (icd-test icds "d|diagnosi|")))
 |#
 
 (defun run-all-examples ()
   (proc (cw:calendar))
   (proc (cw:digital-clock-eu))
   (proc (cw:clock))
-
-  ;(proc (cw:treeview-strings stgtree "icd"))
   (proc (cw:treeview stgtree))
-
-;  (proc (cw:treeview-symbols symtree 'icd))
+  (proc (cw:treeview (sym2stg symtree)))
   (proc (cw:list-dir (user-homedir-pathname)))
-
   (proc (class-browser1 'number))
   (proc (class-browser2 'condition))
-
-  (proc (pkg-doc))
-
-  ;(proc (icd-test icds "d|diagnosi|")))
+  ;(proc (pkg-doc))
+  (pkg-doc) ; creates a separate process itself
   (proc (icd-test icds)))
-
 
 ;-----------------------------------------
 ;1) ICD BROWSER
@@ -125,192 +94,11 @@ to do
 (define-class-browser-command xxx ((item 'item :gesture :select)) (setf (info *application-frame*) item))
 
 (defun class-browser2 (key)
-;  (cw:tree-view (make-instance 'node-cb :name key :show-children t) 'item 'class-browser :right 800))
-;  (cw:tree-view (make-instance 'node-cb :name key :show-children t) 'item :pretty-name "class-browser" :right 800))
   (cw:tree-view (make-instance 'node-cb :name key :show-children t) 'class-browser 'item :right 800))
 
 ;-----------------------------------------
 ;3) PACKAGE-BROWSER, a simple draft of a package documentation
-;  remove it or 1) make it very simple and link to pkg-doc  <---
 ;-----------------------------------------
-; 1) app-logic and helper
-; ev todo: remove second common-lisp from pkg-menu, remove special forms from other categories, rm cclim colors from variable
-
-;(defparameter pkg-list (cons :common-lisp (sort (mapcar (lambda (x) (intern (package-name x) :keyword)) (list-all-packages)) #'string<)))
-
-;(defparameter pkg-list (sort (mapcar (lambda (x) (intern (package-name x) :keyword)) (list-all-packages)) #'string<))
-
-(defparameter pkg-list (sort (mapcar 'package-name (list-all-packages)) #'string<))
-
-
-
-; ; color-names are mixed case strings, without + or -, e.g. "antique white"
-; (defparameter colors (mapcar (lambda (x) (#~s'.*'+\&+' (#~s' '-'g x))) (mapcar #'fourth clim-internals::*xpm-x11-colors*)))
-; (defun constant-p (s) (if (or (constantp s) (#~m'^\+.+\+$' (symbol-name s))) s))
-; (defparameter clim-es (mapcar #'symbol-name (remove-if-not #'constant-p (loop for s being the external-symbols of :clim collect s))))
-; (defun clim-non-color-contstants () (set-difference clim-es colors :test 'string-equal))
-; (defun clim-color-contstants () (intersection clim-es colors :test 'string-equal))
-
-
-;(defun mktree (l) (mapcar (lambda (x) (if (null (cdr x)) x (cons (cw:key (car x)) (mapcar #'list x)))) (cw:pack l)))
-(defun mktree (l) (mapcar (lambda (x) (if (null (cdr x)) x (cons (cw:key (car x)) x))) (cw:pack l)))
-
-#|
-(defun clim-colors ()
-  "divide clim-constants into colors and other constants"
-  (let ((o (mapcar (lambda (x) (find-symbol x :clim)) (sort (clim-non-color-contstants) #'string<)))     ;other constants
-        (c (mapcar (lambda (x) (find-symbol x :clim)) (sort (clim-color-contstants) #'nsort:nstring<)))) ;color-name constants
-    (cons :constant (cons (cons 'color-names (mktree c)) (mktree o)))))
-(defun spec-op () (cons 'special-operator (mktree (sort (remove-if-not #'special-operator-p (loop for s being the external-symbols of :cl collect s)) #'string<))))
-|#
-
-; from Peter Seibel's "manifest" quicklisp package
-(defun present-symbols%% (pkg)
-  (loop for what in manifest::*categories*
-        for names = (manifest::names pkg what)
-        when names collect
-        (cons what (remove-if 'consp names))))  ; remove "setf functions" e.g. AREF (SETF AREF)
-
-#|
-(defun symbol-tree (p)
-  "if pkg is clim, divide constants into color-names and other-constants
-  if pkg is cl, show special forms"
-  (cond ((eql p :clim) (reverse (cons (clim-colors) (mapcar (lambda (x) (cons (car x) (mktree (cdr x)))) (cdr (reverse (present-symbols%% p)))))))
-        ((eql p (or :common-lisp :cl)) (cons (spec-op) (mapcar (lambda (x) (cons (car x) (mktree (cdr x)))) (present-symbols%% p))))
-        (t (mapcar (lambda (x) (cons (car x) (mktree (cdr x)))) (present-symbols%% p)))))
-|#
-
-;simplify
-(defun symbol-tree (p) (mapcar (lambda (x) (cons (car x) (mktree (cdr x)))) (present-symbols%% p)))
-
-(cw:define-node-methods 
-  :nc node-pkg)
-
-; 2) gui -- nodes should not be sensible
-(define-application-frame pkg-doc (cw:tree)
- ((info :accessor info :initform ""))
-  (:command-table (pkg-doc :inherit-from (cw:tree)))
-  ;(:menu-bar cw:tree)
-  (:panes 
-   (tree :application :display-function 'cw:display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)
-   ;(info :application :display-function 'show-childreno :incremental-redisplay t))
-   (info :application :display-function 'showinfo :incremental-redisplay t))
-	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
-
-;(defmethod show-childreno ((f pkg-doc) p) (describe (info *application-frame*) p))
-(defmethod showinfo ((f pkg-doc) p) (describe (h:sym (info *application-frame*) p)))
-
-(define-pkg-doc-command show-info ((item 'string :gesture :select))   
-  (setf (info *application-frame*) item))
-
-;creates a separtate window for every new package
-(define-pkg-doc-command (packages :menu t) ()
-  (let ((pkg (menu-choose pkg-list)))
-   (tview (list (cons pkg (symbol-tree pkg))) pkg)))
-;   (tview (pkg-doc::pkg-tree pkg) pkg)))
-
-
-
-(defun tview (tree key)
-  (cw:t2h-r tree)
-;  (cw:tree-view (make-instance 'node-pkg :name key :show-children t) 'string 'pkg-doc :right 800))
-;  (cw:tree-view (make-instance 'node-pkg :name key :show-children t) 'string :pretty-name "pkg-doc" :right 800))   ; 11.10.19
-  (cw:tree-view (make-instance 'node-pkg :name key :show-children t) 'pkg-doc 'string :right 800))
-
-;  (defun tview (tree key)
-;  ;  (cw:t2h tree)
-;    (cw:t2h-r tree)
-;    (cw:tree-view (make-instance 'node-pkg :name 
-;                                 ;key
-;                                 (lol:symb key)
-;                                 :show-children t) 'string 'pkg-doc :right 800))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,
-(define-pkg-doc-command (packages :menu t) ()
-  (let ((pkg (menu-choose pkg-list)))
-;   (tview (cw:sym2stg (cw-utils::pack-leaves (cons pkg (present-symbols%% (h:kwd pkg))))))))
-
-;(setf (cw:group *application-frame*) (make-instance 'node-pkg :name (package-name pkg) :show-children t))
-(setf (cw:group *application-frame*) (make-instance 'node-pkg :name (h:kwd pkg) :show-children t))
-
-    (redisplay-frame-panes *application-frame* :force-p t)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,
-
-
-;;; geht
-  (defun tview (tree &optional (key (caar tree)))
-    (cw:t2h tree)
-  ;  (cw:t2h-r tree)
-    (cw:tree-view (make-instance 'node-pkg :name key
-                                 :show-children t) 'pkg-doc 'string :right 800))
-
-;;; geht
-  (defun tview (tree key)
-    (cw:t2h tree)
-  ;  (cw:t2h-r tree)
-    (cw:tree-view (make-instance 'node-pkg :name (string-downcase key)
-                                 :show-children t) 'pkg-doc 'string :right 800))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;,
-(define-pkg-doc-command (packages :menu t) ()
-  (let ((pkg (menu-choose pkg-list)))
-    (setf (cw:group *application-frame*) (make-instance 'node-pkg :name 
-;                                                        (h:sym pkg) 
-                                                        (string-downcase pkg) 
-
-                                                        :show-children t))
-    (redisplay-frame-panes *application-frame* :force-p t)))
-
-
-
-(define-pkg-doc-command (packages :menu t) ()
-  (let ((pkg (menu-choose pkg-list)))
-    (setf (cw:group *application-frame*) (h:kwd pkg))
-    (redisplay-frame-panes *application-frame* :force-p t)))
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,
-;; geht, macht aber neues frame
-(define-pkg-doc-command (packages :menu t) ()
-  (let ((pkg (menu-choose pkg-list)))
-;    (setf (cw:group *application-frame*) (h:kwd pkg))
-    (tview (h:kwd pkg))))
-;    (redisplay-frame-panes *application-frame* :force-p t)))
-
-
-
-;; gehen
-;(tview)
-;(tview :nsort)
-  (defun tview (&optional (key :clim))
-    (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons key (present-symbols%% key)))))
-    (cw:tree-view (make-instance 'node-pkg :name (string-downcase key)
-                                 :show-children t) 'pkg-doc 'string :right 800))
-
-
-#|
-(defun pkg-doc (&optional (pkg :clim)) 
-  (let ((p (string-downcase (package-name pkg))))
-    (tview (list (cons p (cw:sym2stg (symbol-tree pkg)))) p)))
-|#
-
-(defun pkg-doc (&optional (pkg "CLIM")) 
-  (let ((p (string-downcase pkg)))
-    (tview (list (cons p (cw:sym2stg (symbol-tree pkg)))) p)))
-
-
-#|
-;;;; am 27.8.2019 auskommentiert  <----
-;from pkg-doc
-(defun pkg-doc (&optional (pkg "CLIM"))
-   (tview  (pkg-doc::pkg-tree pkg) pkg))
-|#
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,,,,,
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,,,,,
-;;;;;;;;;;
 (defparameter pkg-list (sort (mapcar 'package-name (list-all-packages)) #'string<))
 
 ; from Peter Seibel's "manifest" quicklisp package
@@ -333,51 +121,16 @@ to do
    (info :application :display-function 'disp-pkg-info :incremental-redisplay t))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
-;(defmethod show-childreno ((f pkg-doc) p) (describe (info *application-frame*) p))
-
-;::(defmethod disp-pkg-info ((f pkg-doc) p) (describe (h:sym (info *application-frame*) p)))
-
-
-;(defmethod show-childreno ((f pkg-doc) p) (inspect (h:sym (info *application-frame*) p)))
-
-
 ;(defmethod disp-pkg-info ((f pkg-doc) p) (print (info *application-frame*) p))
   (defmethod disp-pkg-info ((f pkg-doc) p) 
   (let* ((pkg (intern (string-upcase (cw:item-name (cw:group *application-frame*)))))
-         (inf-ap-fr (info *application-frame*))
-         (sym (find-symbol (string-upcase inf-ap-fr) pkg)))
+         (sym (find-symbol (string-upcase (info *application-frame*)) pkg)))
   (describe sym p)))
-
-
 
 (define-pkg-doc-command show-info ((item 'string :gesture :select))   
   (setf (info *application-frame*) item))
 
-#|
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,
-;; geht, macht aber neues frame
-(define-pkg-doc-command (packages :menu t) ()
-  (let ((pkg (menu-choose pkg-list)))
-    (tview (h:kwd pkg))))
-
-;geht, ohne neues frame
-(define-pkg-doc-command (packages :menu t) ()
-  (let ((pkg (menu-choose pkg-list)))
-    (setf (cw:group *application-frame*) (make-instance 'node-pkg :name (string-downcase pkg) :show-children t))
-    (redisplay-frame-panes *application-frame* :force-p t)))
-
-
-;; gehen
-;(tview)
-;(tview :nsort)
-  (defun tview (&optional (key :clim))
-    (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons key (present-symbols%% key)))))
-    (cw:tree-view (make-instance 'node-pkg :name (string-downcase key)
-                                 :show-children t) 'pkg-doc 'string :right 800))
-|#
-
-;scheint zu gehen, insert clrhash
+;insert clrhash
 (define-pkg-doc-command (packages :menu t) ()
   (let ((pkg (menu-choose pkg-list)))
     (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons (intern pkg) (present-symbols%% pkg)))))
@@ -390,13 +143,6 @@ to do
       (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons pkg (present-symbols%% pkg)))))
       (cw:tree-view (make-instance 'node-pkg :name (string-downcase pkg)
                                    :show-children t) 'pkg-doc 'string :right 800))))
-
-;;display info geht noch nicht
-;; rename package-doc, pkg-doc
-;run
-;(tview)
-;(tview :nsort)
-
 
 ;------------------------
 ; example tree data
