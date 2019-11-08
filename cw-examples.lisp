@@ -193,11 +193,12 @@ to do
   ;(:menu-bar cw:tree)
   (:panes 
    (tree :application :display-function 'cw:display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)
-   (info :application :display-function 'show-childreno :incremental-redisplay t))
+   ;(info :application :display-function 'show-childreno :incremental-redisplay t))
+   (info :application :display-function 'showinfo :incremental-redisplay t))
 	(:layouts (double (horizontally () tree (make-pane 'clim-extensions:box-adjuster-gadget) info))))
 
 ;(defmethod show-childreno ((f pkg-doc) p) (describe (info *application-frame*) p))
-(defmethod show-childreno ((f pkg-doc) p) (describe (h:sym (info *application-frame*) p)))
+(defmethod showinfo ((f pkg-doc) p) (describe (h:sym (info *application-frame*) p)))
 
 (define-pkg-doc-command show-info ((item 'string :gesture :select))   
   (setf (info *application-frame*) item))
@@ -334,15 +335,25 @@ to do
 
 ;(defmethod show-childreno ((f pkg-doc) p) (describe (info *application-frame*) p))
 
-(defmethod disp-pkg-info ((f pkg-doc) p) (describe (h:sym (info *application-frame*) p)))
+;::(defmethod disp-pkg-info ((f pkg-doc) p) (describe (h:sym (info *application-frame*) p)))
 
 
 ;(defmethod show-childreno ((f pkg-doc) p) (inspect (h:sym (info *application-frame*) p)))
 
 
+;(defmethod disp-pkg-info ((f pkg-doc) p) (print (info *application-frame*) p))
+  (defmethod disp-pkg-info ((f pkg-doc) p) 
+  (let* ((pkg (intern (string-upcase (cw:item-name (cw:group *application-frame*)))))
+         (inf-ap-fr (info *application-frame*))
+         (sym (find-symbol (string-upcase inf-ap-fr) pkg)))
+  (describe sym p)))
+
+
+
 (define-pkg-doc-command show-info ((item 'string :gesture :select))   
   (setf (info *application-frame*) item))
 
+#|
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,
 ;; geht, macht aber neues frame
@@ -356,6 +367,7 @@ to do
     (setf (cw:group *application-frame*) (make-instance 'node-pkg :name (string-downcase pkg) :show-children t))
     (redisplay-frame-panes *application-frame* :force-p t)))
 
+
 ;; gehen
 ;(tview)
 ;(tview :nsort)
@@ -363,6 +375,15 @@ to do
     (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons key (present-symbols%% key)))))
     (cw:tree-view (make-instance 'node-pkg :name (string-downcase key)
                                  :show-children t) 'pkg-doc 'string :right 800))
+|#
+
+;scheint zu gehen, insert clrhash
+(define-pkg-doc-command (packages :menu t) ()
+  (let ((pkg (menu-choose pkg-list)))
+    (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons (intern pkg) (present-symbols%% pkg)))))
+    (setf (cw:group *application-frame*) (make-instance 'node-pkg :name (string-downcase pkg) :show-children t))
+    (redisplay-frame-panes *application-frame* :force-p t)))
+
 (defun pkg-doc (&optional (pkg :clim))
   (clim-sys:make-process 
     (lambda ()

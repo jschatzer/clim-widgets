@@ -309,7 +309,7 @@ awk -vRS= '/Status: install/ {print $2}' /var/lib/dpkg/status     #installed
 https://superuser.com/questions/492501/how-do-i-list-all-of-the-executables-in-a-linux-directory-sub-dirs-path
 find . -type f -executable -maxdepth 1     # find executable files
 |#
-,
+
 ;;  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
