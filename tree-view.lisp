@@ -172,13 +172,13 @@
   ((txtsize :accessor txtsize :initform :normal)
    (group :accessor group :initarg :group)
    (ptype :accessor ptype :initarg :ptype))
-  (:pane (make-pane 'application-pane :display-function 'display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow)))
+  (:pane :application :name "tree1" :display-function 'display-tree :incremental-redisplay t :end-of-line-action :allow :end-of-page-action :allow))
 
 (defmethod display-tree ((f tree) p) (disp-tree (group f) (ptype f) p 0))
 (define-presentation-action toggle (icon command tree) (object window) (toggle object) (redisplay-frame-pane *application-frame* window))
 (define-tree-command (txt-size :menu t) () (setf (txtsize *application-frame*) textsize))
 
-(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) pretty-name &allow-other-keys)
+(defun tree-view (gp pt &optional (frame 'tree) &key (left 0) (top 0) (right 400) (bottom 400) (pretty-name "PRETTY NAME")  &allow-other-keys)
     (run-frame-top-level (make-application-frame frame :group gp :ptype pt :left left :top top :right right :bottom bottom :pretty-name pretty-name)))
 
 ;************************************************************
