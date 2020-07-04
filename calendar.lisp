@@ -34,7 +34,7 @@
        (let ((i 0)) (dotimes (w 6) (,rc (p) (dotimes (d 7) (disp-day-nr) (incf i))))))))
 
 (defmacro mp (d-fn)
-  `(make-pane 'application-pane :width :compute :height :compute :borders nil :scroll-bars nil :text-style '(:fix nil nil) :display-function ',d-fn :incremental-redisplay nil))
+  `(make-pane 'application-pane :width :compute :height :compute :scroll-bars nil :display-function ',d-fn :incremental-redisplay nil))
 ;--------------------------------------
 ; present-types
 ;--------------------------------------

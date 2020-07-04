@@ -31,7 +31,7 @@
 |#
 
 (defun clock ()
-  (let ((f (open-window-stream :label 'clock)))
+  (let ((f (open-window-stream :label "clock"))) ; changed symbol 'clock to sequence as per mcclim -jmorrison
     (multiple-value-bind (s m h) (get-decoded-time)
       (let* ((is (/ pi 30)) (im (/ pi (* 30 60))) (ih (/ pi (* 30 60 6))) ;increment per second
              (as (* (/ pi 30) s)) (am (+ (* (/ pi 30) m) (/ (* (/ pi 30) s) 60))) (ah (+ (* (/ pi 6) (rem h 12)) (/ (* (/ pi 6) m) 60))) ;initial arc
@@ -90,4 +90,4 @@
               (redisplay xx p))))))
 
 (defun digital-clock-eu () 
-  (clock-eu% 'clock-eu-design 60 'face-dec-eu 1))
+  (clock-eu% "clock-eu-design" 60 'face-dec-eu 1)) ; changed symbol to string sequence as per mcclim -jmorrison
