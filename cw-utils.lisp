@@ -268,11 +268,11 @@
 
 (defun sym2stg (l)
   "transform a symbol-tree into a string-tree"
-  (rmapcar (h:compose 'string-downcase 'stg) l))
+  (rmapcar (alexandria:compose 'string-downcase 'stg) l))
 
 (defun sym2stg (l)
   "transform a symbol-tree into a downcase string-tree"
-  (rmapcar (h:compose 'string-downcase 'symbol-name) l))
+  (rmapcar (alexandria:compose 'string-downcase 'symbol-name) l))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

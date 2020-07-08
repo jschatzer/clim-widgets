@@ -1,7 +1,9 @@
 ;;; cw-examples.lisp
 
 (in-package cw-examples)
-(h:rt h:hh)
+;(h:rt h:hh)
+(set-dispatch-macro-character #\# #\~ 'perlre:|#~-reader|)
+
 
 (defmacro proc (fn)
   `(progn 
@@ -19,11 +21,14 @@
   (proc (cw:treeview stgtree))
   (proc (cw:treeview (sym2stg symtree)))
   (proc (cw:list-dir (user-homedir-pathname)))
+  ;(proc (cw:list-dir "*"))
+
   (proc (class-browser1 'number))
   (proc (class-browser2 'condition))
   ;(proc (pkg-doc))
   (pkg-doc) ; creates a separate process itself
-  (proc (icd-test icds)))
+  (proc (icd-test icds))
+  (proc (view-exe)))
 
 ;-----------------------------------------
 ;1) ICD BROWSER
@@ -143,6 +148,51 @@
       (cw:t2h (cw:sym2stg (cw-utils::pack-leaves (cons pkg (present-symbols%% pkg)))))
       (cw:tree-view (make-instance 'node-pkg :name (string-downcase pkg)
                                    :show-children t) 'pkg-doc 'string :right 800))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; https://rosettacode.org/wiki/Last_letter-first_letter#Common_Lisp
+
+;;; return all the words that start with an initial letter
+(defun filter-with-init (words init)
+  (remove-if-not (lambda (word) (eql init (aref word 0))) words))
+;;; produce a hash table whose key is the initial letter of a word and whose value is
+;;; a list of the words that start with that initial letter
+(defun group-by-first-letter (words)
+  (let ((map_letters (make-hash-table))
+        (inits (remove-duplicates (mapcar (lambda (word) (aref word 0)) words))))
+    (dolist (init inits map_letters)
+      (setf (gethash init map_letters) (filter-with-init words init)))))
+
+; note ON LINUX 
+(defparameter ht
+  (group-by-first-letter
+    (cdr
+      (#~d'./'
+       (uiop:run-program 
+         "find . -type f -executable -maxdepth 1 -printf '%p'" :output 'string)))))
+
+(defun view-exe ()   ; ev dir
+  "list executables on a linux computer"
+  (cw:treeview 
+    (cw-utils::pack-leaves
+      (cons "executables"
+            (loop for k in (sort (alexandria:hash-table-keys ht) 'string<)
+                  collect (cons (lol:mkstr k) (sort (gethash k ht) 'string<)))))))
+
+;-------
+(defun view-deb-available ())
+(defun view-deb-installed ())
+
+#|
+https://askubuntu.com/questions/598384/how-do-i-get-a-list-of-all-available-packages-from-the-repositories-that-are-con
+apt-get update
+apt-cache dump | grep -oP 'Package: \K.*' | sort -n          # available
+
+https://askubuntu.com/questions/1056448/how-to-get-the-list-of-installed-packages-on-ubuntu-debian-w-o-command-or-w-o-lo
+awk -vRS= '/Status: install/ {print $2}' /var/lib/dpkg/status     #installed
+|#
+
 
 ;------------------------
 ; example tree data

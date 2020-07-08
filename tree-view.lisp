@@ -204,6 +204,8 @@
 
 ;----------------------------------------------------------------------------------
 ; 1) *** VIEW DIRECTORY - from http://osdir.com/ml/mcclim-devel/2009-08/msg00010.html
+#|
+; with cl-fad
 (define-node-methods 
   :nc node-fs
   :cc pathname
@@ -217,7 +219,28 @@
   (tree-view (make-instance 'node-fs 
                             :name (path:dirname d) 
                             :show-children t)))
+|#
 
+; include scrolling
+; without cl-fad
+(define-node-methods 
+  :nc node-fs
+  :cc pathname
+  :cy uiop:pathname-equal
+  :nn (let ((lst (pathname-directory (name n)))) (when (consp lst) (car (last lst))))
+  :ln (file-namestring (name n))
+;  :gc  (fad:list-directory (name n)) 
+
+;  :gc (uiop:directory-files (name n)) 
+;  :gc (directory (name n))
+;  :gc (directory (directory-namestring (name n)))
+  :gc (append (uiop:subdirectories (name n)) (uiop:directory-files (name n)))
+  :cp (uiop:directory-pathname-p n))
+
+(defun list-dir (d) ;initial key
+  (tree-view (make-instance 'node-fs 
+                            :name d   ; :name (directory-namestring d) ; geht auch
+                            :show-children t)))
 
 #|
 ;----- test -----
