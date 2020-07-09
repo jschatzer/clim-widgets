@@ -233,6 +233,8 @@
 ;13.10.18 scheint gut zu gehen
 ;test, ev rename  r- for recursive
 ;(defun r-sym2stg (l)
+
+#|
 (defun sym2stg (l)
   "transform a symbol-tree into a string-tree"
   (mapcar (lambda (x) 
@@ -248,6 +250,7 @@
                   ((notany 'consp x) (mapcar 'string-downcase (mapcar 'symbol-name x)))
                   (t (mapcar 'sym2stg x))))
           l))
+|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -266,14 +269,16 @@
 (defun stg (sym)
   (with-output-to-string (s) (princ sym s)))
 
+#|
 (defun sym2stg (l)
   "transform a symbol-tree into a string-tree"
   (rmapcar (alexandria:compose 'string-downcase 'stg) l))
 
+
 (defun sym2stg (l)
   "transform a symbol-tree into a downcase string-tree"
   (rmapcar (alexandria:compose 'string-downcase 'symbol-name) l))
-
+|#
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
